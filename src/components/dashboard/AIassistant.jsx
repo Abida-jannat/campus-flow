@@ -4,11 +4,13 @@ import { useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 
 export default function AIAssistantCard() {
-
   const [message, setMessage] = useState("");
 
   const send = () => {
-    alert("AI Integration Coming Soon");
+    if (!message.trim()) return;
+
+    alert(`You asked: ${message}`);
+
     setMessage("");
   };
 
@@ -26,15 +28,20 @@ export default function AIAssistantCard() {
       <div className="flex gap-3">
 
         <input
-          className="flex-1 bg-slate-800 rounded-xl px-4 text-white"
+          className="flex-1 bg-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 border border-transparent"
           placeholder="Ask anything..."
           value={message}
-          onChange={(e)=>setMessage(e.target.value)}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              send();
+            }
+          }}
         />
 
         <button
           onClick={send}
-          className="bg-indigo-600 px-5 rounded-xl"
+          className="bg-indigo-600 hover:bg-indigo-500 px-5 rounded-xl text-white transition"
         >
           <FaPaperPlane />
         </button>
