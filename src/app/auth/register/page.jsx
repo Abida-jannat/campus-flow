@@ -71,7 +71,7 @@ export default function RegisterPage() {
           toast.error("Account already exists! Redirecting to login...");
 
           setTimeout(() => {
-            router.push("/auth/login");
+            router.push(" /auth/login ");
           }, 1500);
         } else {
           toast.error(error.message || "Registration Failed");
@@ -80,16 +80,12 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
-
-
-      await authClient.signOut();
-
-      toast.success("Registration Successful! Please log in.");
-
+     
 
       setTimeout(() => {
         router.push("/auth/login");
       }, 1200);
+
 
     } catch (err) {
       console.error(err);

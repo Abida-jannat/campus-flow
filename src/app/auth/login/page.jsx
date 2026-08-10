@@ -8,7 +8,7 @@ import { FaGraduationCap, FaArrowRight } from "react-icons/fa";
 import { HiOutlineAcademicCap } from "react-icons/hi";
 import toast from "react-hot-toast";
 
-//Doin ui nehla sultana labiba
+//Doing ui nehla sultana labiba
 
 export default function LoginPage() {
   const router = useRouter();
