@@ -64,10 +64,11 @@ export async function GET(request) {
   } catch (error) {
     console.error("Classroom API Error:", error);
 
-    return NextResponse.json(
+    return  NextResponse.json(
       {
         success: false,
-        message: "Server Error",
+            message: "Server Error", 
+        
       },
       { status: 500 }
     );
