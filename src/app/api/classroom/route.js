@@ -40,7 +40,7 @@ export async function GET(request) {
       })
       .map((schedule) => schedule.room);
 
-    // Get all rooms that exist in this building
+  
     const allRooms = [
       ...new Set(
         schedules.map((schedule) => schedule.room)

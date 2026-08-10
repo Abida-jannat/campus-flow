@@ -32,8 +32,10 @@ export async function GET(request) {
 
     return NextResponse.json(
       {
+        
         success: false,
         message: "Failed to load rooms",
+
       },
       { status: 500 }
     );
