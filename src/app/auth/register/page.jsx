@@ -85,10 +85,9 @@ export default function RegisterPage() {
       await authClient.signOut();
 
       toast.success("Registration Successful! Please log in.");
-
-
+      
       setTimeout(() => {
-        router.push("/auth/login");
+        router.push(" /auth/login ");
       }, 1200);
 
     } catch (err) {
@@ -221,7 +220,8 @@ export default function RegisterPage() {
            onChange={handleChange}
            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
            required
-           >
+              >
+                
          <option value="">Select Department</option>
          <option value="CSE">Computer Science & Engineering (CSE)</option>
         <option value="EEE">Electrical & Electronic Engineering (EEE)</option>
