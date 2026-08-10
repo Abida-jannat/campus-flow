@@ -8,6 +8,8 @@ import { FaGraduationCap, FaArrowRight } from "react-icons/fa";
 import { HiOutlineAcademicCap } from "react-icons/hi";
 import toast from "react-hot-toast";
 
+//Doin ui nehla sultana labiba
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -54,38 +56,37 @@ export default function LoginPage() {
       const { data, error } = await authClient.signIn.email({
         email: formData.email,
         password: formData.password,
-        // autoSignIn is true by default, which is what you want here.
+     
       });
 
       if (error) {
         const errorMsg = error.message ? error.message.toLowerCase() : "";
 
-        // 4. Specific handling for unregistered users vs. wrong credentials
+       
         if (
           error.status === 404 ||
           errorMsg.includes("user not found") ||
           errorMsg.includes("account does not exist") ||
           errorMsg.includes("not registered")
         ) {
-          // If the user isn't in the database, show a specific toast and redirect to register.
+        
           toast.error("Account not found. Please register first!");
 
           setTimeout(() => {
             router.push("/auth/register");
           }, 1500);
         } else {
-          // For other errors (like wrong password), show a generic error toast.
+         
           toast.error(error.message || "Invalid credentials. Please try again.");
         }
 
         setLoading(false);
-        return; // Prevent the dashboard redirect on error
+        return; 
       }
 
-      // 5. Successful login
+      
       toast.success("Welcome Back 👋");
 
-      // A small delay before redirecting allows the toast to be seen.
       setTimeout(() => {
         router.push("/dashboard");
       }, 1200);
@@ -195,8 +196,6 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Email */}
-
             <div>
               <label className="block text-slate-300 mb-2">
                 University Email
@@ -204,6 +203,7 @@ export default function LoginPage() {
 
               <input
                 type="email"
+
                 name="email"
                 placeholder="Enter your email"
                 value={formData.email}
@@ -248,8 +248,6 @@ export default function LoginPage() {
               </Link>
 
             </div>
-
-            {/* Login Button */}
 
             <button
               type="submit"
