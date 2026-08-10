@@ -80,7 +80,9 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
-     
+
+    
+
 
       setTimeout(() => {
         router.push("/auth/login");

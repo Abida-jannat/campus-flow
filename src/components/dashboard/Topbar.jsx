@@ -1,16 +1,34 @@
-
-
-
 "use client";
-
+import { useEffect, useState } from "react";
 import {
   Bell,
   Search,
   CalendarDays,
   ChevronDown,
 } from "lucide-react";
+import { setInCacheMap } from "next/dist/client/components/segment-cache/cache-map";
 
 export default function Topbar() {
+
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    async function getUser() {
+      try {
+        const res = await fetch("/api/user");
+        if (!res.ok)
+          return;
+        const data = await res.json();
+        setUser(data);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    getUser();
+      
+  }, []);
+  
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -35,7 +53,9 @@ export default function Topbar() {
 
           <h2 className="text-3xl font-bold text-white">
             {greeting},
-            <span className="text-indigo-400"> Student 👋</span>
+            <span className="text-indigo-400">
+              {" "}
+              { user?.name || "Student"} 👋</span>
           </h2>
 
           <div className="flex items-center gap-2 mt-2 text-slate-400 text-sm">
@@ -95,11 +115,11 @@ export default function Topbar() {
             <div className="text-left hidden lg:block">
 
               <p className="text-white font-semibold">
-                Abida Jannat
+                {user?.name || "Student"}
               </p>
 
               <p className="text-slate-400 text-xs">
-                Student
+                {user?.email || "Loading..."}
               </p>
 
             </div>

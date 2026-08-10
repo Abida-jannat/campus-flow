@@ -13,30 +13,28 @@ import toast from "react-hot-toast";
 export default function LoginPage() {
   const router = useRouter();
 
-  // 1. Session Guard (Redirect if already logged in)
+ 
   useEffect(() => {
     async function checkUser() {
-      // getSession handles client-side session checking efficiently
+      
       const session = await authClient.getSession();
 
-      // Better Auth sometimes returns data even if there's no session, so check session.data.session.
-      // Use .replace() so the "Back" button doesn't create a loop.
       if (session?.data?.session) {
         router.replace("/dashboard");
       }
     }
     
     checkUser();
-  }, [router]);
+     }, [router]);
 
-  const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState({
     email: "",
     password: "",
-  });
+    });
 
-  const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
+    const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -49,10 +47,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // 2. Clear any previous session *before* signing in (good practice)
+      
       await authClient.signOut();
 
-      // 3. Authenticate with Better Auth
+     
       const { data, error } = await authClient.signIn.email({
         email: formData.email,
         password: formData.password,
