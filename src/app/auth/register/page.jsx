@@ -81,18 +81,22 @@ export default function RegisterPage() {
         return;
       }
 
-    
-
+      await authClient.signOut();
+      toast.success(" Registration Successful! Please log in. ");
 
       setTimeout(() => {
         router.push("/auth/login");
       }, 1200);
 
 
-    } catch (err) {
+    }
+    catch (err)
+    {
       console.error(err);
       toast.error("Something went wrong!");
-    } finally {
+    }
+    finally
+    {
       setLoading(false);
     }
   };
