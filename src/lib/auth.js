@@ -29,5 +29,26 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
   },
- 
+
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        required: true,
+        defaultValue: "student",
+        input: true, // allows the client (register form) to set this value
+      },
+      department: {
+        type: "string",
+        required: false,
+        input: true,
+      },
+      semester: {
+        type: "string",
+        required: false,
+        input: true,
+      },
+    },
+  },
+
 });
