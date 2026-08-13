@@ -13,7 +13,7 @@ export async function GET() {
       email: teacherEmail,
     });
 
-    if (!teacher) {
+    if ( !teacher) {
       return NextResponse.json(
         {
           success: false,
