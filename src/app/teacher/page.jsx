@@ -80,8 +80,8 @@ export default function TeacherDashboard() {
       <aside className="hidden lg:flex w-64 fixed inset-y-0 left-0 bg-slate-900 border-r border-slate-800 flex-col">
         {/* Logo */}
 
-        <div className="h-20 flex items-center px-6 border-b border-slate-800">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-lg">
+        <div className= "h-20 flex items-center px-6 border-b border-slate-800">
+          <div className= "w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-lg">
             C
           </div>
 
@@ -302,7 +302,7 @@ export default function TeacherDashboard() {
                 href="/teacher/schedule"
                 className="mt-5 inline-block bg-slate-800 hover:bg-slate-700 border border-slate-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition"
               >
-                View Schedule
+                 View Schedule
               </Link>
             </div>
           </div>
