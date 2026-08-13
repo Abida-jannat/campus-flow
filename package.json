@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "^1.6.25",
+    "@google/genai": "^2.16.0",
     "axios": "^1.18.1",
     "better-auth": "^1.6.25",
+    "groq-sdk": "^1.5.0",
     "lucide-react": "^1.27.0",
     "mongodb": "^7.5.0",
     "next": "16.2.12",
