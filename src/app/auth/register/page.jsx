@@ -13,6 +13,8 @@ export default function RegisterPage() {
     fullName: "",
     universityId: "",
     department: "",
+    role: "student",
+    semester: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -51,12 +53,16 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-   
+
       const { data, error } = await authClient.signUp.email({
         name: formData.fullName,
         email: formData.email,
         password: formData.password,
-        autoSignIn: false, 
+        role: formData.role,
+        department: formData.department,
+        semester: formData.semester,
+        studentId: formData.universityId,
+        autoSignIn: false,
       });
 
       if (error) {
@@ -106,7 +112,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-6xl overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl grid lg:grid-cols-2">
 
-  
+
         <div className="hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 relative overflow-hidden">
 
           <div className="absolute w-72 h-72 bg-indigo-600/20 rounded-full blur-3xl -top-20 -left-20"></div>
@@ -190,12 +196,25 @@ export default function RegisterPage() {
             </h2>
 
             <p className="text-slate-400 mt-2">
-              Register as a student to access CampusFlow.
+              Register to access CampusFlow.
             </p>
 
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Role selector — determines whether this account lands on
+                the student dashboard or the teacher dashboard after login */}
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
+              required
+            >
+              <option value="student">Register as Student</option>
+              <option value="teacher">Register as Teacher</option>
+            </select>
 
             <input
               type="text"
@@ -210,14 +229,14 @@ export default function RegisterPage() {
             <input
               type="text"
               name="universityId"
-              placeholder="University ID"
+              placeholder={formData.role === "teacher" ? "Employee ID" : "University ID"}
               value={formData.universityId}
               onChange={handleChange}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
               required
             />
          <div>
-  
+
 
           <select
            name="department"
@@ -226,7 +245,7 @@ export default function RegisterPage() {
            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
            required
               >
-                
+
          <option value="">Select Department</option>
          <option value="CSE">Computer Science & Engineering (CSE)</option>
         <option value="EEE">Electrical & Electronic Engineering (EEE)</option>
@@ -237,6 +256,22 @@ export default function RegisterPage() {
         <option value="Software Engineering">SWE</option>
      </select>
          </div>
+
+            {/* Semester only matters for students — hide it for teacher registrations */}
+            {formData.role === "student" && (
+              <select
+                name="semester"
+                value={formData.semester}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
+                required
+              >
+                <option value="">Select Semester</option>
+                <option value="Spring 2026">Spring 2026</option>
+                <option value="Summer 2026">Summer 2026</option>
+                <option value="Fall 2026">Fall 2026</option>
+              </select>
+            )}
 
             <input
               type="email"
@@ -270,9 +305,10 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-500 transition-all duration-300 text-white font-semibold py-3 rounded-xl"
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all duration-300 text-white font-semibold py-3 rounded-xl"
             >
-              Create Account
+              {loading ? "Creating account..." : "Create Account"}
             </button>
 
           </form>
