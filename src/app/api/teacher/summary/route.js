@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import clientPromise from "@/lib/mongodb";
+import { auth } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, message: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    const teacherEmail = session.user.email;
+    console.log("Session email:", teacherEmail);
+
     const client = await clientPromise;
     const db = client.db("campus-flow");
-
-    // Temporary teacher email for testing
-    const teacherEmail = "rahman@gmail.com";
 
     const teacher = await db.collection("user").findOne({
       email: teacherEmail,
     });
 
-    if ( !teacher) {
+    if (!teacher) {
       return NextResponse.json(
         {
           success: false,
