@@ -10,20 +10,32 @@ import toast from "react-hot-toast";
 
 //Doing ui nehla sultana labiba
 
+// Sends a logged-in user to the right dashboard based on their role.
+// Used both for the "already logged in" redirect and the post-login redirect.
+function redirectByRole(router, role) {
+  if (role === "teacher") {
+    router.push("/teacher");
+  } else if (role === "admin") {
+    router.push("/admin");
+  } else {
+    router.push("/dashboard");
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
- 
+
   useEffect(() => {
     async function checkUser() {
-      
+
       const session = await authClient.getSession();
 
       if (session?.data?.session) {
-        router.replace("/dashboard");
+        redirectByRole(router, session.data.user?.role);
       }
     }
-    
+
     checkUser();
      }, [router]);
 
@@ -47,46 +59,51 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      
+
       await authClient.signOut();
 
-     
+
       const { data, error } = await authClient.signIn.email({
         email: formData.email,
         password: formData.password,
-     
+
       });
 
       if (error) {
         const errorMsg = error.message ? error.message.toLowerCase() : "";
 
-       
+
         if (
           error.status === 404 ||
           errorMsg.includes("user not found") ||
           errorMsg.includes("account does not exist") ||
           errorMsg.includes("not registered")
         ) {
-        
+
           toast.error("Account not found. Please register first!");
 
           setTimeout(() => {
             router.push("/auth/register");
           }, 1500);
         } else {
-         
+
           toast.error(error.message || "Invalid credentials. Please try again.");
         }
 
         setLoading(false);
-        return; 
+        return;
       }
 
-      
+
       toast.success("Welcome Back 👋");
 
+      // Fetch the fresh session so we know the user's role right after login,
+      // then send them to the matching dashboard instead of always "/dashboard".
+      const session = await authClient.getSession();
+      const role = session?.data?.user?.role;
+
       setTimeout(() => {
-        router.push("/dashboard");
+        redirectByRole(router, role);
       }, 1200);
 
     } catch (err) {
