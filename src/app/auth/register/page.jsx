@@ -235,9 +235,8 @@ export default function RegisterPage() {
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
               required
             />
-         <div>
-
-
+            <div>
+              
           <select
            name="department"
            value={formData.department}
@@ -254,9 +253,10 @@ export default function RegisterPage() {
         <option value="Law">Law</option>
         <option value="Data Science">Data Science</option>
         <option value="Software Engineering">SWE</option>
-     </select>
-         </div>
-
+              </select>
+              
+            </div>
+            
             {/* Semester only matters for students — hide it for teacher registrations */}
             {formData.role === "student" && (
               <select
