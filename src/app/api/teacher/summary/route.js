@@ -34,7 +34,10 @@ export async function GET() {
       );
     }
 
-    const courses = await db.collection("classSchedule").distinct(
+    // FIX: this used to count from "classSchedule", but the courses page
+    // (add/edit/delete) manages the separate "courses" collection — so
+    // that page's changes were never reflected in this dashboard stat.
+    const courses = await db.collection("courses").distinct(
       "courseCode",
       {
         teacher: teacher.name,
@@ -64,6 +67,9 @@ export async function GET() {
         name: teacher.name,
         email: teacher.email,
         department: teacher.department,
+
+        // ✅ ADDED: return teacher profile image
+        image: teacher.image || null,
       },
 
       stats: {

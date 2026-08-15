@@ -181,23 +181,39 @@ export default function TeacherDashboard() {
 
               <div className="h-8 w-px bg-slate-800" />
 
-              <button className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold">
-                  {initials}
-                </div>
+              <Link
+  href="/teacher/settings"
+  className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-900 transition cursor-pointer"
+>
+  {/* Profile Image / Initials */}
+  <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold overflow-hidden">
+    {teacher?.image ? (
+      <img
+        src={teacher.image}
+        alt={teacher?.name || "Teacher"}
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      initials
+    )}
+  </div>
 
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-semibold">
-                    {teacher?.name ?? "Loading..."}
-                  </p>
+  {/* Teacher Information */}
+  <div className="hidden sm:block text-left">
+    <p className="text-sm font-semibold text-white">
+      {teacher?.name ?? "Loading..."}
+    </p>
 
-                  <p className="text-xs text-slate-500">
-                    {teacher?.department ?? ""}
-                  </p>
-                </div>
+    <p className="text-xs text-slate-500">
+      {teacher?.department ?? "Teacher"}
+    </p>
+  </div>
 
-                <ChevronDown size={17} className="text-slate-500" />
-              </button>
+  <ChevronDown
+    size={17}
+    className="text-slate-500"
+  />
+</Link>
             </div>
           </div>
         </header>
