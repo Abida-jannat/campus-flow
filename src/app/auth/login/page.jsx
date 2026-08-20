@@ -31,6 +31,10 @@ export default function LoginPage() {
 
       const session = await authClient.getSession();
 
+
+     console.log("LOGIN PAGE SESSION:", session);
+    console.log("LOGIN PAGE USER:", session?.data?.user);
+    console.log("LOGIN PAGE ROLE:", session?.data?.user?.role);
       if (session?.data?.session) {
         redirectByRole(router, session.data.user?.role);
       }
@@ -100,8 +104,13 @@ export default function LoginPage() {
       // Fetch the fresh session so we know the user's role right after login,
       // then send them to the matching dashboard instead of always "/dashboard".
       const session = await authClient.getSession();
-      const role = session?.data?.user?.role;
 
+console.log("FULL SESSION:", session);
+console.log("LOGGED-IN USER:", session?.data?.user);
+console.log("USER ROLE:", session?.data?.user?.role);
+
+      const role = session?.data?.user?.role;
+ 
       setTimeout(() => {
         redirectByRole(router, role);
       }, 1200);
