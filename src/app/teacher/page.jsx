@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +32,7 @@ const otherNavItems = [
 
 export default function TeacherDashboard() {
   const pathname = usePathname();
+  const router = useRouter(); // FIX: this was missing — handleLogout called router.push() with no router defined
 
   const [teacher, setTeacher] = useState(null);
   const [stats, setStats] = useState(null);
@@ -49,19 +51,19 @@ export default function TeacherDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-      window.location.href = "/login";
+      await authClient.signOut();
+      router.push("/auth/login");
     } catch (err) {
       console.error("Logout failed:", err);
     }
-    };
-    
-     function getGreeting() {
-   const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 17) return "Good Afternoon";
-  return "Good Evening";
-   }
+  };
+
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  }
 
   // Initials for the avatar badge, derived from the teacher's real name
   const initials = teacher?.name
@@ -225,10 +227,9 @@ export default function TeacherDashboard() {
 
           <div className="mb-8">
         <p className="text-indigo-400 text-sm font-medium mb-2">Teacher Portal</p>
-                      
-                     
-             
-          
+
+
+
        <h1 className="text-3xl font-bold"> {getGreeting()}, {teacher?.name ?? "..."} 👋
             </h1>
 
