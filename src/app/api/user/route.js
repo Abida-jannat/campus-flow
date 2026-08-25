@@ -1,5 +1,4 @@
 import { auth } from "@/lib/auth";
-import { useRouter } from "next/navigation";
 import clientPromise from "@/lib/mongodb";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";

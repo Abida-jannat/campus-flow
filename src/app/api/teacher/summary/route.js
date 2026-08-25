@@ -15,7 +15,6 @@ export async function GET() {
     }
 
     const teacherEmail = session.user.email;
-    console.log("Session email:", teacherEmail);
 
     const client = await clientPromise;
     const db = client.db("campus-flow");
@@ -26,34 +25,35 @@ export async function GET() {
 
     if (!teacher) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Teacher not found",
-        },
+        { success: false, message: "Teacher not found" },
         { status: 404 }
       );
     }
 
-    // FIX: this used to count from "classSchedule", but the courses page
-    // (add/edit/delete) manages the separate "courses" collection — so
-    // that page's changes were never reflected in this dashboard stat.
-    const courses = await db.collection("courses").distinct(
-      "courseCode",
-      {
-        teacher: teacher.name,
-      }
-    );
+    const courses = await db.collection("courses").find({ teacher: teacher.name }).toArray();
 
-    const students = await db.collection("attendance").distinct(
-      "studentEmail",
-      {
-        teacher: teacher.name,
-      }
-    );
+    // FIX: studentCount used to come from attendance.distinct("studentEmail"),
+    // which only counted students AFTER attendance had been taken at least
+    // once. Now it matches the same department/semester logic the Students
+    // page and attendance page use, so the count is accurate immediately.
+    const comboSeen = new Set();
+    const studentEmails = new Set();
 
-    const today = new Date().toLocaleDateString("en-US", {
-      weekday: "long",
-    });
+    for (const course of courses) {
+      const comboKey = `${course.department}|${course.semester}`;
+      if (comboSeen.has(comboKey)) continue;
+      comboSeen.add(comboKey);
+
+      const students = await db
+        .collection("user")
+        .find({ role: "student", department: course.department, semester: course.semester })
+        .project({ email: 1 })
+        .toArray();
+
+      students.forEach((s) => studentEmails.add(s.email));
+    }
+
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
     const classesToday = await db.collection("classSchedule").countDocuments({
       teacher: teacher.name,
@@ -62,31 +62,22 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-
       teacher: {
         name: teacher.name,
         email: teacher.email,
         department: teacher.department,
-
-        // ✅ ADDED: return teacher profile image
         image: teacher.image || null,
       },
-
       stats: {
         courseCount: courses.length,
-        studentCount: students.length,
-        classesToday: classesToday,
+        studentCount: studentEmails.size,
+        classesToday,
       },
     });
-
   } catch (error) {
     console.error("Teacher Summary Error:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to load teacher summary",
-      },
+      { success: false, message: "Failed to load teacher summary" },
       { status: 500 }
     );
   }
