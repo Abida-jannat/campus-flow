@@ -3,17 +3,17 @@ import { headers } from "next/headers";
 import clientPromise from "@/lib/mongodb";
 import { auth } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
-    // =========================
-    // CHECK LOGIN
-    // =========================
-
+    
+    const reqHeaders = await headers();
     const session = await auth.api.getSession({
-      headers: await headers(),
+      headers: reqHeaders,
     });
 
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         {
           success: false,
@@ -24,17 +24,9 @@ export async function GET() {
     }
 
     const studentEmail = session.user.email;
-
-    // =========================
-    // DATABASE
-    // =========================
-
+    
     const client = await clientPromise;
-    const db = client.db("campus-flow");
-
-    // =========================
-    // GET THIS STUDENT'S RECORDS
-    // =========================
+    const db = client.db("campus-flow")
 
     const records = await db
       .collection("attendance")
@@ -45,15 +37,12 @@ export async function GET() {
         date: -1,
       })
       .toArray();
-
-    // =========================
-    // GROUP ATTENDANCE BY COURSE
-    // =========================
-
+    
     const courseMap = {};
 
     records.forEach((record) => {
       const courseCode = record.courseCode || "Unknown";
+      const status = record.status?.toLowerCase() || "";
 
       if (!courseMap[courseCode]) {
         courseMap[courseCode] = {
@@ -69,22 +58,12 @@ export async function GET() {
 
       courseMap[courseCode].total += 1;
 
-      if (record.status === "present") {
-        courseMap[courseCode].present += 1;
-      }
-
-      if (record.status === "absent") {
-        courseMap[courseCode].absent += 1;
-      }
-
-      if (record.status === "late") {
-        courseMap[courseCode].late += 1;
-      }
+      if (status === "present") courseMap[courseCode].present += 1;
+      if (status === "absent") courseMap[courseCode].absent += 1;
+      if (status === "late") courseMap[courseCode].late += 1;
     });
 
-    // =========================
-    // CREATE COURSE SUMMARY
-    // =========================
+
 
     const courseAttendance = Object.values(courseMap).map((course) => {
       const percentage =
@@ -98,25 +77,15 @@ export async function GET() {
       };
     });
 
-    // =========================
-    // OVERALL ATTENDANCE
-    // =========================
 
     const overall = records.reduce(
       (acc, record) => {
+        const status = record.status?.toLowerCase() || "";
         acc.total += 1;
 
-        if (record.status === "present") {
-          acc.present += 1;
-        }
-
-        if (record.status === "absent") {
-          acc.absent += 1;
-        }
-
-        if (record.status === "late") {
-          acc.late += 1;
-        }
+        if (status === "present") acc.present += 1;
+        if (status === "absent") acc.absent += 1;
+        if (status === "late") acc.late += 1;
 
         return acc;
       },
@@ -132,11 +101,7 @@ export async function GET() {
       overall.total > 0
         ? Math.round((overall.present / overall.total) * 100)
         : 0;
-
-    // =========================
-    // RESPONSE
-    // =========================
-
+    
     return NextResponse.json({
       success: true,
 
@@ -165,9 +130,7 @@ export async function GET() {
         success: false,
         message: "Failed to load attendance",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
