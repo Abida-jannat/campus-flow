@@ -16,39 +16,42 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-
+  
   const [dashboardData, setDashboardData] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
 
   useEffect(() => {
-    async function fetchDashboard() {
+    async function fetchDashboardAndAnnouncements() {
       try {
-        const res = await fetch("/api/dashboard");
-
-        if (!res.ok) {
-          console.log("Failed to fetch dashboard data");
-          return;
+        const dashRes = await fetch("/api/dashboard", {
+          credentials: "include",
+        });
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          setDashboardData(dashData);
         }
 
-        const data = await res.json();
-        console.log(data); // Check API response in browser console
-
-        setDashboardData(data);
-
+        const annRes = await fetch("/api/student/announcements", {
+          credentials: "include",
+        });
+        if (annRes.ok) {
+          const annData = await annRes.json();
+          if (annData.success) {
+            setAnnouncements(annData.announcements || []);
+          }
+        }
       } catch (error) {
-        console.error(error);
+        console.error("Dashboard data load error:", error);
       }
     }
 
-    fetchDashboard();
+    fetchDashboardAndAnnouncements();
   }, []);
 
   return (
     <div className="space-y-8">
-
- 
-
+    
       <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-6">
-
         <StatsCard
           title="Attendance"
           value={`${dashboardData?.attendance ?? 0}%`}
@@ -60,8 +63,9 @@ export default function Dashboard() {
           title="Courses"
           value={dashboardData?.totalCourses ?? 0}
           subtitle="Active courses"
-         icon={<BookOpen size={28} />}
+          icon={<BookOpen size={28} />}
         />
+
         <StatsCard
           title="Events"
           value="3"
@@ -71,31 +75,25 @@ export default function Dashboard() {
 
         <StatsCard
           title="Announcements"
-          value="12"
-          subtitle="Unread notices"
+          value={announcements.length}
+          subtitle="Total course notices"
           icon={<Bell size={28} />}
         />
-
       </div>
 
-
+      {/* CLASSES & ANNOUNCEMENTS */}
       <div className="grid lg:grid-cols-2 gap-6">
+        <TodayClasses classes={dashboardData?.TodayClasses || []} />
 
-        <TodayClasses classes={dashboardData?.TodayClasses ||[] } />
-
-        <AnnouncementCard announcements={dashboardData?.announcements || []} />
-
+        <AnnouncementCard announcements={announcements} />
       </div>
 
-
+      {/* ROOMS & AI ASSISTANT */}
       <div className="grid lg:grid-cols-2 gap-6">
-
         <EmptyRoomCard />
 
         <AIAssistantCard />
-
       </div>
-
     </div>
   );
 }

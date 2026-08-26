@@ -31,11 +31,13 @@ export async function GET() {
       );
     }
 
-    // Courses
+    // Courses — FIX: added semester filter so this only counts courses
+    // for the student's current semester, not every semester in the department
     const courses = await db
       .collection("courses")
       .find({
         department: user.department,
+        semester: user.semester,
       })
       .toArray();
 
@@ -47,7 +49,7 @@ export async function GET() {
       })
       .toArray();
 
-    // Today's classes
+    // Today's classes — FIX: added semester filter, same reason as above
     const today = new Date().toLocaleDateString("en-US", {
       weekday: "long",
     });
@@ -56,11 +58,16 @@ export async function GET() {
       .collection("classSchedule")
       .find({
         department: user.department,
+        semester: user.semester,
         day: today,
       })
       .toArray();
 
     // Latest Announcements
+    // NOTE: announcements documents don't have a "department" field (they're
+    // matched by courseCode instead — see /api/student/announcements), so
+    // this array will always come back empty. Left as-is since the dashboard
+    // page now fetches announcements separately from that dedicated route.
     const announcements = await db
       .collection("announcements")
       .find({
