@@ -3,37 +3,37 @@
 import { useEffect, useState } from "react";
 import { FaBullhorn } from "react-icons/fa";
 
+
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-  async function fetchAnnouncements() {
-    try {
-      const res = await fetch("/api/student/announcements", {
-        credentials: "include",
-      });
+  useEffect(() => {
+    async function fetchAnnouncements() {
+      try {
+        const res = await fetch("/api/student/announcements", {
+          credentials: "include",
+        });
 
-    
-      const contentType = res.headers.get("content-type");
-      if (!res.ok || !contentType || !contentType.includes("application/json")) {
-        console.error("API route not returning JSON. Received status:", res.status);
-        return;
-      }
+        const contentType = res.headers.get("content-type");
+        if (!res.ok || !contentType || !contentType.includes("application/json")) {
+          console.error("API route not returning JSON. Received status:", res.status);
+          return;
+        }
 
-      const data = await res.json();
-      if (data.success) {
-        setAnnouncements(data.announcements || []);
+        const data = await res.json();
+        if (data.success) {
+          setAnnouncements(data.announcements || []);
+        }
+      } catch (error) {
+        console.error("Error loading announcements:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error loading announcements:", error);
-    } finally {
-      setLoading(false);
     }
-  }
 
-  fetchAnnouncements();
-}, []);
+    fetchAnnouncements();
+  }, []);
 
   function formatDate(dateString) {
     if (!dateString) return "";
@@ -88,10 +88,15 @@ export default function AnnouncementsPage() {
                   {item.message || item.description}
                 </p>
 
-                <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-500">
+                {/* Footer Section: Posted by (Left) & Date (Right) */}
+                <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-800/60 text-xs text-slate-500">
                   <span>
-                    Posted by: <strong className="text-slate-400 font-medium">{item.teacherName || "Instructor"}</strong>
+                    Posted by:{" "}
+                    <strong className="text-slate-400 font-medium">
+                      {item.teacher || item.teacherName || item.postedBy || "Faculty Member"}
+                    </strong>
                   </span>
+
                   <span>{formatDate(item.createdAt || item.date)}</span>
                 </div>
               </div>

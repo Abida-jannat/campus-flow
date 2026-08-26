@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  
   const [dashboardData, setDashboardData] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
 
@@ -50,13 +49,14 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-    
+      {/* STATS CARDS WITH WORKING LINKS */}
       <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-6">
         <StatsCard
           title="Attendance"
           value={`${dashboardData?.attendance ?? 0}%`}
           subtitle="than last month"
           icon={<GraduationCap size={28} />}
+          href="/dashboard/attendance"
         />
 
         <StatsCard
@@ -64,6 +64,7 @@ export default function Dashboard() {
           value={dashboardData?.totalCourses ?? 0}
           subtitle="Active courses"
           icon={<BookOpen size={28} />}
+          href="/dashboard/courses"
         />
 
         <StatsCard
@@ -71,6 +72,7 @@ export default function Dashboard() {
           value="3"
           subtitle="Upcoming events"
           icon={<CalendarDays size={28} />}
+          href="/dashboard/events"
         />
 
         <StatsCard
@@ -78,6 +80,7 @@ export default function Dashboard() {
           value={announcements.length}
           subtitle="Total course notices"
           icon={<Bell size={28} />}
+          href="/dashboard/announcements"
         />
       </div>
 

@@ -7,7 +7,6 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-
 async function getTeacher() {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({
@@ -31,7 +30,6 @@ async function getTeacher() {
 
   return { session, client, db, teacher };
 }
-
 
 export async function GET() {
   try {
@@ -96,7 +94,6 @@ export async function GET() {
   }
 }
 
-
 export async function POST(request) {
   try {
     const data = await getTeacher();
@@ -157,6 +154,7 @@ export async function POST(request) {
       courseName: course.courseName,
       message: message.trim(),
       teacher: teacher.name,
+      teacherName: teacher.name,
       teacherEmail: teacher.email,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -165,6 +163,34 @@ export async function POST(request) {
     const result = await db
       .collection("announcements")
       .insertOne(newAnnouncement);
+
+    // --- নোটিফিকেশন লজিক যুক্ত করা হলো ---
+    const enrolledStudents = await db
+      .collection("enrollments")
+      .find({ courseCode: course.courseCode })
+      .toArray();
+
+    if (enrolledStudents.length > 0) {
+      const notifications = enrolledStudents.map((student) => ({
+        userId: student.studentEmail,
+        title: `New Announcement: ${course.courseName}`,
+        message: message.trim(),
+        link: "/dashboard/announcements",
+        isRead: false,
+        createdAt: new Date(),
+      }));
+
+      await db.collection("notifications").insertMany(notifications);
+    } else {
+      // যদি enrollments ফোল্ডারে ডাটা না থাকে, তবুও জেনারেট করে রাখবে
+      await db.collection("notifications").insertOne({
+        title: `New Announcement: ${course.courseName}`,
+        message: message.trim(),
+        link: "/dashboard/announcements",
+        isRead: false,
+        createdAt: new Date(),
+      });
+    }
 
     return NextResponse.json(
       {
@@ -281,7 +307,6 @@ export async function PUT(request) {
     );
   }
 }
-
 
 export async function DELETE(request) {
   try {
