@@ -26,13 +26,13 @@ const departments = [
   "Law",
   "Data Science",
   "Software Engineering",
+
 ];
 
-// ======================================================
-// RESIZE IMAGE
-// ======================================================
+
 
 function resizeImage(file, maxSize = 300) {
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -82,17 +82,12 @@ function resizeImage(file, maxSize = 300) {
   });
 }
 
-// ======================================================
-// TEACHER SETTINGS
-// ======================================================
+
 
 export default function TeacherSettings() {
   const router = useRouter();
   const fileInputRef = useRef(null);
 
-  // ======================================================
-  // STATE
-  // ======================================================
 
   const [form, setForm] = useState({
     name: "",
@@ -111,9 +106,6 @@ export default function TeacherSettings() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // ======================================================
-  // LOAD PROFILE
-  // ======================================================
 
   useEffect(() => {
     async function loadProfile() {
@@ -151,9 +143,7 @@ export default function TeacherSettings() {
     loadProfile();
   }, [router]);
 
-  // ======================================================
-  // HANDLE INPUT CHANGE
-  // ======================================================
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -164,22 +154,20 @@ export default function TeacherSettings() {
     }));
   };
 
-  // ======================================================
-  // ADD / CHANGE PHOTO
-  // ======================================================
+
 
   const handleImagePick = async (e) => {
     const file = e.target.files?.[0];
 
     if (!file) return;
 
-    // Check image type
+
     if (!file.type.startsWith("image/")) {
       toast.error("Please choose an image file");
       return;
     }
 
-    // Check image size
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image must be smaller than 5MB");
       return;
@@ -188,6 +176,7 @@ export default function TeacherSettings() {
     setUploadingImage(true);
 
     try {
+
       const resized = await resizeImage(file);
 
       const { error } = await authClient.updateUser({
@@ -203,10 +192,7 @@ export default function TeacherSettings() {
       toast.success("Profile photo updated successfully");
     } catch (error) {
       console.error("Photo update error:", error);
-
-      toast.error(
-        error.message || "Failed to update profile photo"
-      );
+      toast.error(error.message || "Failed to update profile photo");
     } finally {
       setUploadingImage(false);
 
@@ -216,9 +202,6 @@ export default function TeacherSettings() {
     }
   };
 
-  // ======================================================
-  // DELETE PHOTO
-  // ======================================================
 
   const handleDeletePhoto = async () => {
     if (!image) return;
@@ -245,18 +228,13 @@ export default function TeacherSettings() {
       toast.success("Profile photo removed");
     } catch (error) {
       console.error("Photo delete error:", error);
-
-      toast.error(
-        error.message || "Failed to remove profile photo"
-      );
+      toast.error(error.message || "Failed to remove profile photo");
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // ======================================================
-  // SAVE PROFILE
-  // ======================================================
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -279,37 +257,31 @@ export default function TeacherSettings() {
         department: form.department,
       };
 
-      const { error } = await authClient.updateUser(
-        updatedProfile
-      );
+      const { error } = await authClient.updateUser(updatedProfile);
 
       if (error) {
         throw new Error(error.message);
       }
 
       setForm(updatedProfile);
+
       setOriginalForm(updatedProfile);
 
       toast.success("Profile updated successfully");
 
-      // Give the toast a moment to show, then return to the dashboard
+
       setTimeout(() => {
         router.push("/teacher");
       }, 1000);
     } catch (error) {
       console.error("Profile update error:", error);
-
-      toast.error(
-        error.message || "Profile update failed"
-      );
+      toast.error(error.message || "Profile update failed");
     } finally {
       setSaving(false);
     }
   };
 
-  // ======================================================
-  // CANCEL CHANGES
-  // ======================================================
+
 
   const handleCancel = () => {
     setForm(originalForm);
@@ -317,9 +289,6 @@ export default function TeacherSettings() {
     toast.success("Changes cancelled");
   };
 
-  // ======================================================
-  // INITIALS
-  // ======================================================
 
   const initials = form.name
     ? form.name
@@ -331,56 +300,39 @@ export default function TeacherSettings() {
         .toUpperCase()
     : "?";
 
-  // ======================================================
-  // LOADING
-  // ======================================================
-
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4" />
-
-          <p className="text-slate-400">
-            Loading profile...
-          </p>
+          <p className="text-slate-400">Loading profile...</p>
         </div>
       </div>
     );
   }
 
-  // ======================================================
-  // UI
-  // ======================================================
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+
       <div className="p-6 lg:p-8 max-w-4xl mx-auto">
 
-        {/* ==================================================
-            HEADER
-        ================================================== */}
 
         <div className="flex items-center gap-4 mb-8">
 
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-            <Settings
-              size={23}
-              className="text-indigo-400"
-            />
+            <Settings size={23} className="text-indigo-400" />
           </div>
 
           <div className="flex-1">
-            <h1 className="text-2xl lg:text-3xl font-bold">
-              Profile Settings
-            </h1>
-
+            <h1 className="text-2xl lg:text-3xl font-bold">Profile Settings</h1>
             <p className="text-slate-400 text-sm mt-1">
               Manage your teacher profile and personal information
             </p>
           </div>
 
-          {/* BACK TO DASHBOARD */}
 
           <button
             type="button"
@@ -392,17 +344,15 @@ export default function TeacherSettings() {
 
         </div>
 
-        {/* ==================================================
-            PROFILE PHOTO CARD
-        ================================================== */}
+
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6">
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
 
-            {/* PROFILE IMAGE */}
 
-            <div className="relative shrink-0">
+
+            <div className="relative shrink-0">           
 
               <div className="w-28 h-28 rounded-full overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center border-4 border-slate-800 shadow-xl">
 
@@ -417,16 +367,11 @@ export default function TeacherSettings() {
                     {initials}
                   </span>
                 )}
-
               </div>
-
-              {/* CAMERA BUTTON */}
 
               <button
                 type="button"
-                onClick={() =>
-                  fileInputRef.current?.click()
-                }
+                onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingImage}
                 className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-500 border-4 border-slate-900 flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                 title="Change profile photo"
@@ -434,7 +379,6 @@ export default function TeacherSettings() {
                 <Camera size={17} />
               </button>
 
-              {/* FILE INPUT */}
 
               <input
                 ref={fileInputRef}
@@ -446,7 +390,6 @@ export default function TeacherSettings() {
 
             </div>
 
-            {/* PHOTO INFORMATION */}
 
             <div className="flex-1 text-center sm:text-left">
 
@@ -463,28 +406,23 @@ export default function TeacherSettings() {
               </div>
 
               <p className="text-slate-400 text-sm mt-1">
-                {form.department ||
-                  "Department not selected"}
+                {form.department || "Department not selected"}
               </p>
 
               <p className="text-slate-500 text-xs mt-3">
                 JPG or PNG · Maximum 5MB · Recommended square image
               </p>
 
-              {/* PHOTO BUTTONS */}
 
               <div className="flex flex-wrap justify-center sm:justify-start gap-3 mt-5">
 
                 <button
                   type="button"
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
+                  onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingImage}
                   className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 rounded-xl text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Camera size={16} />
-
                   {uploadingImage
                     ? "Processing..."
                     : image
@@ -512,31 +450,20 @@ export default function TeacherSettings() {
 
         </div>
 
-        {/* ==================================================
-            PERSONAL INFORMATION
-        ================================================== */}
 
         <form
           onSubmit={handleSubmit}
           className="bg-slate-900 border border-slate-800 rounded-2xl p-6"
         >
 
-          {/* SECTION HEADER */}
-
           <div className="flex items-center gap-3 mb-7">
 
             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-              <User
-                size={18}
-                className="text-indigo-400"
-              />
+              <User size={18} className="text-indigo-400" />
             </div>
 
             <div>
-              <h2 className="font-semibold text-lg">
-                Personal Information
-              </h2>
-
+              <h2 className="font-semibold text-lg">Personal Information</h2>
               <p className="text-xs text-slate-500 mt-1">
                 Update your basic teacher information
               </p>
@@ -544,11 +471,8 @@ export default function TeacherSettings() {
 
           </div>
 
-          {/* FORM */}
 
           <div className="grid md:grid-cols-2 gap-5">
-
-            {/* FULL NAME */}
 
             <div>
 
@@ -575,9 +499,9 @@ export default function TeacherSettings() {
 
               </div>
 
+
             </div>
 
-            {/* DEPARTMENT */}
 
             <div>
 
@@ -599,16 +523,9 @@ export default function TeacherSettings() {
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition appearance-none"
                   required
                 >
-
-                  <option value="">
-                    Select department
-                  </option>
-
+                  <option value="">Select department</option>
                   {departments.map((department) => (
-                    <option
-                      key={department}
-                      value={department}
-                    >
+                    <option key={department} value={department}>
                       {department}
                     </option>
                   ))}
@@ -619,7 +536,6 @@ export default function TeacherSettings() {
 
             </div>
 
-            {/* EMAIL */}
 
             <div>
 
@@ -649,7 +565,6 @@ export default function TeacherSettings() {
 
             </div>
 
-            {/* ACCOUNT ROLE */}
 
             <div>
 
@@ -657,8 +572,8 @@ export default function TeacherSettings() {
                 Account Role
               </label>
 
-              <div className="relative">
-
+              <div class
+                Name="relative">
                 <ShieldCheck
                   size={18}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400"
@@ -670,25 +585,14 @@ export default function TeacherSettings() {
                   readOnly
                   className="w-full bg-slate-800/60 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-slate-400 outline-none cursor-not-allowed"
                 />
-
               </div>
-
               <p className="text-xs text-slate-600 mt-2">
                 Your account role cannot be changed here.
               </p>
-
             </div>
-
           </div>
 
-          {/* ==================================================
-              ACTION BUTTONS
-          ================================================== */}
-
           <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 pt-6 border-t border-slate-800">
-
-            {/* CANCEL */}
-
             <button
               type="button"
               onClick={handleCancel}
@@ -700,7 +604,6 @@ export default function TeacherSettings() {
               Cancel
             </button>
 
-            {/* SAVE */}
 
             <button
               type="submit"
@@ -708,37 +611,24 @@ export default function TeacherSettings() {
               className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-sm font-semibold transition disabled:opacity-50"
             >
               <Save size={16} />
-
-              {saving
-                ? "Saving..."
-                : "Save Changes"}
+              {saving ? "Saving..." : "Save Changes"}
             </button>
 
           </div>
 
         </form>
 
-        {/* ==================================================
-            PROFILE SUMMARY
-        ================================================== */}
+
 
         <div className="mt-6 grid sm:grid-cols-3 gap-4">
+          
 
-          {/* PROFILE */}
 
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
 
             <div className="flex items-center gap-2">
-
-              <User
-                size={15}
-                className="text-indigo-400"
-              />
-
-              <p className="text-xs text-slate-500 uppercase">
-                Profile
-              </p>
-
+              <User size={15} className="text-indigo-400" />
+              <p className="text-xs text-slate-500 uppercase">Profile</p>
             </div>
 
             <p className="text-sm text-slate-300 mt-2">
@@ -747,21 +637,12 @@ export default function TeacherSettings() {
 
           </div>
 
-          {/* DEPARTMENT */}
 
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-
+            
             <div className="flex items-center gap-2">
-
-              <Building2
-                size={15}
-                className="text-indigo-400"
-              />
-
-              <p className="text-xs text-slate-500 uppercase">
-                Department
-              </p>
-
+              <Building2 size={15} className="text-indigo-400" />
+              <p className="text-xs text-slate-500 uppercase">Department</p>
             </div>
 
             <p className="text-sm text-slate-300 mt-2">
@@ -770,28 +651,18 @@ export default function TeacherSettings() {
 
           </div>
 
-          {/* PHOTO */}
+
 
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
 
             <div className="flex items-center gap-2">
-
-              <Camera
-                size={15}
-                className="text-indigo-400"
-              />
-
-              <p className="text-xs text-slate-500 uppercase">
-                Profile Photo
-              </p>
-
+              <Camera size={15} className="text-indigo-400" />
+              <p className="text-xs text-slate-500 uppercase">Profile Photo</p>
             </div>
 
             <p
               className={`text-sm mt-2 ${
-                image
-                  ? "text-emerald-400"
-                  : "text-slate-500"
+                image ? "text-emerald-400" : "text-slate-500"
               }`}
             >
               {image ? "Uploaded" : "No photo"}

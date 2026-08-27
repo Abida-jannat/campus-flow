@@ -17,9 +17,7 @@ export default function AttendanceTable() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // =========================
-  // LOAD ATTENDANCE
-  // =========================
+
 
   const loadAttendance = async (isRefresh = false) => {
     try {
@@ -42,8 +40,7 @@ export default function AttendanceTable() {
         );
       }
 
-      // IMPORTANT:
-      // API now returns course summaries inside "courses"
+  
       setAttendance(data.courses || []);
 
       setOverall(data.overall || null);
@@ -55,9 +52,6 @@ export default function AttendanceTable() {
     }
   };
 
-  // =========================
-  // LOAD ON PAGE OPEN
-  // =========================
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing selection is a safe, intentional reset
@@ -262,11 +256,10 @@ export default function AttendanceTable() {
           <div className="bg-slate-800/60 border border-slate-800 rounded-xl p-4">
 
             <div className="flex items-center gap-2 mb-2">
-
               <CalendarCheck
                 size={16}
                 className="text-indigo-400"
-              />
+             />
 
               <span className="text-xs text-slate-500">
                 Total Classes
@@ -281,11 +274,8 @@ export default function AttendanceTable() {
           </div>
 
         </div>
-      )}
-
-      {/* =========================
-          NO RECORDS
-      ========================= */}
+     )}
+     
 
       {attendance.length === 0 && (
         <div className="text-center py-12">

@@ -1,4 +1,4 @@
-"use client";
+
 
 "use client";
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* STATS CARDS WITH WORKING LINKS */}
+  
       <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-6">
         <StatsCard
           title="Attendance"
@@ -89,7 +89,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* CLASSES & ANNOUNCEMENTS */}
+
       <div className="grid lg:grid-cols-2 gap-6">
         <TodayClasses
           classes={
@@ -104,7 +104,7 @@ export default function Dashboard() {
         <AnnouncementCard announcements={announcements} />
       </div>
 
-      {/* ROOMS & AI ASSISTANT */}
+   
       <div className="grid lg:grid-cols-2 gap-6">
         <EmptyRoomCard />
 

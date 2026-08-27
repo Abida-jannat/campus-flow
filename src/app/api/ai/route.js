@@ -13,14 +13,14 @@ export async function POST(req) {
     }
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile", // Currently active Groq model
+      model: "openai/gpt-oss-120b",
       temperature: 0.3,
-      max_tokens: 150,
+      max_completion_tokens: 1024,
       messages: [
         {
           role: "system",
           content:
-            "You are CampusConnect's academic assistant. Answer directly and concisely in 1 or 2 sentences max. Do not use greetings or extra details.",
+            "You are CampusConnect's academic assistant. Provide clear, structured, and helpful responses. ALWAYS use standard plain text with clear paragraph spacing and simple numbered/bulleted lists (e.g., 1., 2., - ). NEVER output Markdown tables with pipe symbols (|), HTML tags like <br>, or unformatted continuous blocks of text.",
         },
         { role: "user", content: message },
       ],

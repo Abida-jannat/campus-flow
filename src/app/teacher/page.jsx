@@ -32,8 +32,7 @@ const otherNavItems = [
 
 export default function TeacherDashboard() {
   const pathname = usePathname();
-  const router = useRouter(); // FIX: this was missing — handleLogout called router.push() with no router defined
-
+  const router = useRouter(); 
   const [teacher, setTeacher] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +64,7 @@ export default function TeacherDashboard() {
     return "Good Evening";
   }
 
-  // Initials for the avatar badge, derived from the teacher's real name
+ 
   const initials = teacher?.name
     ? teacher.name
         .split(" ")
@@ -77,11 +76,9 @@ export default function TeacherDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex">
-      {/* ================= SIDEBAR ================= */}
-
+     
       <aside className="hidden lg:flex w-64 fixed inset-y-0 left-0 bg-slate-900 border-r border-slate-800 flex-col">
-        {/* Logo */}
-
+       
         <div className= "h-20 flex items-center px-6 border-b border-slate-800">
           <div className= "w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-lg">
             C
@@ -137,7 +134,7 @@ export default function TeacherDashboard() {
           })}
         </nav>
 
-        {/* Logout */}
+
 
         <div className="p-4 border-t border-slate-800">
           <button
@@ -150,15 +147,14 @@ export default function TeacherDashboard() {
         </div>
       </aside>
 
-      {/* ================= MAIN ================= */}
+
 
       <main className="lg:ml-64 flex-1 min-h-screen">
-        {/* TOP NAVBAR */}
+   
 
         <header className="h-20 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-30">
           <div className="h-full px-6 lg:px-8 flex items-center justify-between">
-            {/* Search */}
-
+  
             <div className="relative hidden md:block">
               <Search
                 size={18}
@@ -187,7 +183,7 @@ export default function TeacherDashboard() {
   href="/teacher/settings"
   className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-900 transition cursor-pointer"
 >
-  {/* Profile Image / Initials */}
+  
   <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold overflow-hidden">
     {teacher?.image ? (
       <img
@@ -218,12 +214,9 @@ export default function TeacherDashboard() {
 </Link>
             </div>
           </div>
-        </header>
+        </header>       
 
-        {/* ================= CONTENT ================= */}
-
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-          {/* Welcome */}
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto">         
 
           <div className="mb-8">
         <p className="text-indigo-400 text-sm font-medium mb-2">Teacher Portal</p>
@@ -329,7 +322,6 @@ export default function TeacherDashboard() {
   );
 }
 
-/* ================= STAT COMPONENT ================= */
 
 function Stat({ icon, title, value }) {
   return (

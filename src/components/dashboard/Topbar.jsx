@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   Search,
@@ -20,10 +21,41 @@ export default function Topbar() {
   const [latestNotice, setLatestNotice] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Search input state & Next.js Router
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+
   const previousCountRef = useRef(0);
   const isInitialFetch = useRef(true);
 
-  // ১. ইউজার ডাটা ফেচ
+  // 1. Search Submission Handler
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) return;
+
+    if (term.includes("lost") || term.includes("found")) {
+      router.push("/dashboard/lost-found");
+    } else if (term.includes("assistant") || term.includes("ai") || term.includes("chat")) {
+      router.push("/dashboard/ai");
+    } else if (term.includes("announcement") || term.includes("notice")) {
+      router.push("/dashboard/announcements");
+    } else if (term.includes("class") || term.includes("schedule")) {
+      router.push("/dashboard/schedule");
+    } else if (term.includes("club")) {
+      router.push("/dashboard/clubs");
+    } else if (term.includes("market")) {
+      router.push("/dashboard/marketplace");
+    } else if (term.includes("attendance")) {
+      router.push("/dashboard/attendance");
+    } else {
+      router.push(`/dashboard/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+
+    setSearchQuery("");
+  };
+
+  // 2. User Data Fetch
   useEffect(() => {
     async function getUser() {
       try {
@@ -38,7 +70,7 @@ export default function Topbar() {
     getUser();
   }, []);
 
-  // ২. নোটিফিকেশন ফেচ ও ১ সেকেন্ডের পোলিং (useCallback ব্যবহার করা হয়েছে যাতে ESLint Error না আসে)
+  // 3. Notification Fetching & Polling
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/student/notifications");
@@ -76,7 +108,6 @@ export default function Topbar() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  
   const handleDeleteOne = async (id, e) => {
     e.stopPropagation();
     try {
@@ -92,7 +123,6 @@ export default function Topbar() {
     }
   };
 
- 
   const handleClearAll = async () => {
     try {
       const res = await fetch("/api/student/notifications", {
@@ -121,7 +151,6 @@ export default function Topbar() {
 
   return (
     <>
-      
       {showNotificationPopup && (
         <div className="fixed top-5 right-5 z-50 max-w-sm w-full bg-slate-900 border border-indigo-500/80 rounded-2xl p-4 shadow-2xl flex items-start gap-3 transition">
           <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center text-indigo-400 flex-shrink-0 mt-0.5">
@@ -170,21 +199,22 @@ export default function Topbar() {
               <span>{today}</span>
             </div>
           </div>
-          
 
           <div className="flex items-center gap-5">
-            {/* Search */}
-            <div className="relative hidden md:block">
+            {/* Active Search Form */}
+            <form onSubmit={handleSearch} className="relative hidden md:block">
               <Search
                 size={18}
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
               />
               <input
                 type="text"
-                placeholder="Search anything..."
-                className="w-80 bg-slate-900 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-white placeholder:text-slate-500 outline-none focus:border-indigo-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search lost & found, AI, announcements..."
+                className="w-80 bg-slate-900 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-white placeholder:text-slate-500 outline-none focus:border-indigo-500 transition"
               />
-            </div>
+            </form>
 
             {/* 🔔 Notification Bell & Dropdown */}
             <div className="relative">
@@ -265,11 +295,14 @@ export default function Topbar() {
             </div>
 
             {/* Profile */}
-            <button className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-3 py-2 hover:border-indigo-500 transition">
+            <Link
+              href="/dashboard/settings"
+              className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-3 py-2 hover:border-indigo-500 transition cursor-pointer"
+            >
               <img
-                src="https://i.pravatar.cc/100"
+                src={user?.image || "https://i.pravatar.cc/100"}
                 alt="profile"
-                className="w-11 h-11 rounded-xl"
+                className="w-11 h-11 rounded-xl object-cover"
               />
               <div className="text-left hidden lg:block">
                 <p className="text-white font-semibold">
@@ -280,7 +313,7 @@ export default function Topbar() {
                 </p>
               </div>
               <ChevronDown size={18} className="text-slate-400" />
-            </button>
+            </Link>
           </div>
         </div>
       </header>

@@ -53,7 +53,15 @@ export default function AIAssistantCard() {
         {loading ? (
           <p className="text-indigo-400">AI is thinking...</p>
         ) : reply ? (
-          <p className="whitespace-pre-wrap">{reply}</p>
+          <div className="flex justify-between items-start gap-2">
+            <p className="whitespace-pre-wrap flex-1">{reply}</p>
+            <button
+              onClick={() => setReply("")}
+              className="text-xs text-slate-400 hover:text-red-400 transition shrink-0 underline"
+            >
+              Clear
+            </button>
+          </div>
         ) : (
           <p>👋 Hi Student! How can I help you today?</p>
         )}
