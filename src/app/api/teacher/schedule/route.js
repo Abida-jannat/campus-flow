@@ -17,9 +17,7 @@ async function getTeacher() {
   return { db, teacher };
 }
 
-/* =========================
-   GET SCHEDULE
-========================= */
+
 
 export async function GET() {
   try {
@@ -49,9 +47,7 @@ export async function GET() {
   }
 }
 
-/* =========================
-   ADD SCHEDULE ENTRY (ONE OR MULTIPLE DAYS)
-========================= */
+
 
 export async function POST(request) {
   try {
@@ -68,8 +64,7 @@ export async function POST(request) {
 
     const { courseCode, days, startTime, endTime, building, floor, room, type } = body;
 
-    // "days" is an array now, e.g. ["Sunday", "Tuesday"] — lets a teacher
-    // add a course that meets on multiple days in a single submission.
+    
     if (
       !courseCode ||
       !Array.isArray(days) ||
@@ -133,9 +128,6 @@ export async function POST(request) {
   }
 }
 
-/* =========================
-   UPDATE SCHEDULE ENTRY (SINGLE ENTRY ONLY)
-========================= */
 
 export async function PUT(request) {
   try {
@@ -199,9 +191,7 @@ export async function PUT(request) {
   }
 }
 
-/* =========================
-   DELETE SCHEDULE ENTRY
-========================= */
+
 
 export async function DELETE(request) {
   try {

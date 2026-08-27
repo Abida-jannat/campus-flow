@@ -7,10 +7,11 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-async function getTeacher() {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({
-    headers: reqHeaders,
+
+  async function getTeacher() {
+    const reqHeaders = await headers();
+     const session = await auth.api.getSession({
+      headers: reqHeaders,
   });
 
   if (!session?.user?.email) {
@@ -30,6 +31,7 @@ async function getTeacher() {
 
   return { session, client, db, teacher };
 }
+
 
 export async function GET() {
   try {
@@ -93,6 +95,7 @@ export async function GET() {
     );
   }
 }
+
 
 export async function POST(request) {
   try {
@@ -164,7 +167,7 @@ export async function POST(request) {
       .collection("announcements")
       .insertOne(newAnnouncement);
 
-    // --- নোটিফিকেশন লজিক যুক্ত করা হলো ---
+  
     const enrolledStudents = await db
       .collection("enrollments")
       .find({ courseCode: course.courseCode })
@@ -182,7 +185,7 @@ export async function POST(request) {
 
       await db.collection("notifications").insertMany(notifications);
     } else {
-      // যদি enrollments ফোল্ডারে ডাটা না থাকে, তবুও জেনারেট করে রাখবে
+    
       await db.collection("notifications").insertOne({
         title: `New Announcement: ${course.courseName}`,
         message: message.trim(),

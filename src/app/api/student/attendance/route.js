@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    
     const reqHeaders = await headers();
     const session = await auth.api.getSession({
       headers: reqHeaders,
@@ -24,9 +23,9 @@ export async function GET() {
     }
 
     const studentEmail = session.user.email;
-    
+
     const client = await clientPromise;
-    const db = client.db("campus-flow")
+    const db = client.db("campus-flow");
 
     const records = await db
       .collection("attendance")
@@ -37,7 +36,7 @@ export async function GET() {
         date: -1,
       })
       .toArray();
-    
+
     const courseMap = {};
 
     records.forEach((record) => {
@@ -48,7 +47,6 @@ export async function GET() {
         courseMap[courseCode] = {
           courseCode: courseCode,
           courseName: record.courseName || courseCode,
-
           present: 0,
           absent: 0,
           late: 0,
@@ -63,12 +61,12 @@ export async function GET() {
       if (status === "late") courseMap[courseCode].late += 1;
     });
 
-
-
+    // Course wise Percentage Calculation (Present + Late = Attended)
     const courseAttendance = Object.values(courseMap).map((course) => {
+      const attended = course.present + course.late;
       const percentage =
         course.total > 0
-          ? Math.round((course.present / course.total) * 100)
+          ? Math.round((attended / course.total) * 100)
           : 0;
 
       return {
@@ -77,7 +75,7 @@ export async function GET() {
       };
     });
 
-
+    // Overall Calculation across all courses
     const overall = records.reduce(
       (acc, record) => {
         const status = record.status?.toLowerCase() || "";
@@ -97,23 +95,20 @@ export async function GET() {
       }
     );
 
+    const overallAttended = overall.present + overall.late;
     const overallPercentage =
       overall.total > 0
-        ? Math.round((overall.present / overall.total) * 100)
+        ? Math.round((overallAttended / overall.total) * 100)
         : 0;
-    
+
     return NextResponse.json({
       success: true,
-
       student: {
         name: session.user.name,
         email: session.user.email,
       },
-
       records,
-
       courses: courseAttendance,
-
       overall: {
         present: overall.present,
         absent: overall.absent,

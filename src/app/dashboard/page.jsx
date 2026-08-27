@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { useEffect, useState } from "react";
 
 import StatsCard from "@/components/dashboard/StatsCard";
@@ -18,6 +20,7 @@ import {
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchDashboardAndAnnouncements() {
@@ -41,6 +44,8 @@ export default function Dashboard() {
         }
       } catch (error) {
         console.error("Dashboard data load error:", error);
+      } finally {
+        setLoading(false);
       }
     }
 
@@ -86,7 +91,15 @@ export default function Dashboard() {
 
       {/* CLASSES & ANNOUNCEMENTS */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <TodayClasses classes={dashboardData?.TodayClasses || []} />
+        <TodayClasses
+          classes={
+            dashboardData?.todaysClasses ||
+            dashboardData?.todayClasses ||
+            dashboardData?.TodayClasses ||
+            []
+          }
+          loading={loading}
+        />
 
         <AnnouncementCard announcements={announcements} />
       </div>

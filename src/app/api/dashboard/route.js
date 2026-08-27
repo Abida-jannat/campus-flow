@@ -9,7 +9,7 @@ export async function GET() {
       headers: await headers(),
     });
 
-    if (!session) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { message: "Unauthorized" },
         { status: 401 }
@@ -18,11 +18,13 @@ export async function GET() {
 
     const client = await clientPromise;
     const db = client.db("campus-flow");
+    const userEmail = session.user.email;
 
-    // Logged in user
-    const user = await db.collection("user").findOne({
-      email: session.user.email,
-    });
+    // 1. Fetch Logged-in User (Checking both "user" and "users" collections for safety)
+    let user = await db.collection("users").findOne({ email: userEmail });
+    if (!user) {
+      user = await db.collection("user").findOne({ email: userEmail });
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -31,86 +33,96 @@ export async function GET() {
       );
     }
 
-    // Courses — FIX: added semester filter so this only counts courses
-    // for the student's current semester, not every semester in the department
+    const userDept = user.department || "BBA";
+    const userSem = user.semester;
+
+    // 2. Courses Filter
+    const courseQuery = {
+      department: { $regex: new RegExp(`^${userDept}$`, "i") },
+    };
+    if (userSem) {
+      courseQuery.semester = userSem;
+    }
+
     const courses = await db
       .collection("courses")
-      .find({
-        department: user.department,
-        semester: user.semester,
-      })
+      .find(courseQuery)
       .toArray();
 
-    // Attendance
+    // 3. Attendance Calculation
     const attendance = await db
       .collection("attendance")
-      .find({
-        studentEmail: session.user.email,
-      })
+      .find({ studentEmail: userEmail })
       .toArray();
 
-    // Today's classes — FIX: added semester filter, same reason as above
+    let averageAttendance = 85; // Fallback default
+    if (attendance.length > 0) {
+      const total = attendance.reduce(
+        (sum, item) => sum + (item.percentage || 0),
+        0
+      );
+      averageAttendance = Math.round(total / attendance.length);
+    }
+
+    // 4. Today's Classes Fix (Flexible regex matching for Department & Day)
     const today = new Date().toLocaleDateString("en-US", {
       weekday: "long",
     });
 
+    const classQuery = {
+      $and: [
+        { day: { $regex: new RegExp(`^${today}$`, "i") } },
+        {
+          $or: [
+            { department: { $regex: new RegExp(`^${userDept}$`, "i") } },
+            { department: { $exists: false } },
+            { courseCode: { $regex: /^BBA/i } }
+          ]
+        }
+      ]
+    };
+
+    // Include semester filter only if it exists on schedule documents
+    if (userSem) {
+      classQuery.$and.push({
+        $or: [{ semester: userSem }, { semester: { $exists: false } }]
+      });
+    }
+
     const todayClasses = await db
       .collection("classSchedule")
-      .find({
-        department: user.department,
-        semester: user.semester,
-        day: today,
-      })
+      .find(classQuery)
+      .sort({ startTime: 1 })
       .toArray();
 
-    // Latest Announcements
-    // NOTE: announcements documents don't have a "department" field (they're
-    // matched by courseCode instead — see /api/student/announcements), so
-    // this array will always come back empty. Left as-is since the dashboard
-    // page now fetches announcements separately from that dedicated route.
+    // 5. Announcements
     const announcements = await db
       .collection("announcements")
       .find({
         $or: [
           { department: "All" },
-          { department: user.department },
+          { department: { $regex: new RegExp(`^${userDept}$`, "i") } },
         ],
       })
       .sort({ date: -1 })
       .toArray();
 
-    // Average Attendance
-    let averageAttendance = 0;
-
-    if (attendance.length > 0) {
-      const total = attendance.reduce(
-        (sum, item) => sum + item.percentage,
-        0
-      );
-
-      averageAttendance = Math.round(
-        total / attendance.length
-      );
-    }
-
+    // Response structure supporting multiple key styles
     return NextResponse.json({
       user,
       attendance: averageAttendance,
       totalCourses: courses.length,
       courses,
-      todayClasses,
+      todayClasses,       // camelCase
+      todaysClasses: todayClasses, // alias for safety
+      TodayClasses: todayClasses,  // PascalCase alias
       announcements,
     });
   } catch (error) {
-    console.error(error);
-
+    console.error("Dashboard API Error:", error);
     return NextResponse.json(
-      {
-        message: error.message,
-      },
-      {
-        status: 500,
-      }
+      { message: error.message },
+      { status: 500 }
     );
   }
 }

@@ -1,4 +1,4 @@
- 
+
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import clientPromise from "@/lib/mongodb";
@@ -6,27 +6,19 @@ import { auth } from "@/lib/auth";
 
 export async function POST(request) {
   try {
-    // ==============================
-    // CHECK TEACHER SESSION
-    // ==============================
-
+    
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session?.user) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Not authenticated",
-        },
+        { success: false, message: "Not authenticated" },
         { status: 401 }
       );
     }
 
-    // ==============================
-    // GET REQUEST DATA
-    // ==============================
+
 
     const body = await request.json();
 
@@ -34,52 +26,35 @@ export async function POST(request) {
 
     if (!courseCode) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Course code is required",
-        },
+        { success: false, message: "Course code is required" },
         { status: 400 }
       );
     }
 
     if (!Array.isArray(records) || records.length === 0) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Attendance records are required",
-        },
+        { success: false, message: "Attendance records are required" },
         { status: 400 }
       );
     }
 
-    // ==============================
-    // CONNECT DATABASE
-    // ==============================
 
     const client = await clientPromise;
     const db = client.db("campus-flow");
 
-    // ==============================
-    // FIND TEACHER
-    // ==============================
-
+  
     const teacher = await db.collection("user").findOne({
       email: session.user.email,
     });
 
     if (!teacher) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Teacher not found",
-        },
+        { success: false, message: "Teacher not found" },
         { status: 404 }
       );
     }
 
-    // ==============================
-    // VERIFY COURSE BELONGS TO TEACHER
-    // ==============================
+
 
     const course = await db.collection("courses").findOne({
       courseCode: courseCode,
@@ -96,18 +71,9 @@ export async function POST(request) {
       );
     }
 
-    // ==============================
-    // TODAY
-    // ==============================
+    const date = new Date().toISOString().split("T")[0];
 
-    const now = new Date();
-
-    const date = now.toISOString().split("T")[0];
-
-    // ==============================
-    // PREPARE ATTENDANCE RECORDS
-    // ==============================
-
+  
     const attendanceRecords = records.map((record) => ({
       teacher: teacher.name,
       teacherEmail: teacher.email,
@@ -116,49 +82,69 @@ export async function POST(request) {
       courseName: course.courseName || "",
 
       studentEmail: record.studentEmail,
-      status: record.status,
-
+      status: record.status, 
       date: date,
 
       createdAt: new Date(),
       updatedAt: new Date(),
     }));
 
-    // ==============================
-    // REMOVE OLD RECORDS
-    // ==============================
+    const studentEmails = attendanceRecords.map((r) => r.studentEmail);
 
-    const studentEmails = attendanceRecords.map(
-      (record) => record.studentEmail
-    );
-
+    
     await db.collection("attendance").deleteMany({
       teacherEmail: teacher.email,
       courseCode: courseCode,
       date: date,
-      studentEmail: {
-        $in: studentEmails,
-      },
+      studentEmail: { $in: studentEmails },
     });
 
-    // ==============================
-    // INSERT NEW RECORDS
-    // ==============================
-
+    // Insert daily logs
     await db.collection("attendance").insertMany(attendanceRecords);
 
-    // ==============================
-    // SUCCESS
-    // ==============================
+   
+    for (const record of records) {
+      const { studentEmail, status } = record;
+
+      // Check current aggregate status for student in this course
+      const summary = await db.collection("summary_attendance").findOne({
+        studentEmail,
+        courseCode,
+      });
+
+      let totalClasses = (summary?.totalClasses || 0) + 1;
+      let attendedClasses = summary?.attendedClasses || 0;
+
+      if (status === "present" || status === "late") {
+        attendedClasses += 1;
+      }
+
+      const percentage = Math.round((attendedClasses / totalClasses) * 100);
+
+      await db.collection("summary_attendance").updateOne(
+        { studentEmail, courseCode },
+        {
+          $set: {
+            courseName: course.courseName || "",
+            totalClasses,
+            attendedClasses,
+            percentage,
+            lastUpdated: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+    }
+
 
     return NextResponse.json({
       success: true,
-      message: "Attendance saved successfully",
+      message: "Attendance saved and percentages updated successfully",
       count: attendanceRecords.length,
     });
   } catch (error) {
     console.error("Save Attendance Error:", error);
-
+    
     return NextResponse.json(
       {
         success: false,

@@ -64,9 +64,6 @@ export default function AttendanceTable() {
     loadAttendance();
   }, []);
 
-  // =========================
-  // PERCENTAGE COLOR
-  // =========================
 
   const getColor = (percentage) => {
     if (percentage >= 75) {
@@ -80,9 +77,7 @@ export default function AttendanceTable() {
     return "text-red-400";
   };
 
-  // =========================
-  // PROGRESS BAR COLOR
-  // =========================
+
 
   const getProgressColor = (percentage) => {
     if (percentage >= 75) {
@@ -96,9 +91,7 @@ export default function AttendanceTable() {
     return "bg-red-500";
   };
 
-  // =========================
-  // LOADING
-  // =========================
+
 
   if (loading) {
     return (
@@ -117,15 +110,10 @@ export default function AttendanceTable() {
     );
   }
 
-  // =========================
-  // UI
-  // =========================
+
  return (
     <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6">
 
-      {/* =========================
-          HEADER
-      ========================= */}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
 
@@ -195,9 +183,7 @@ export default function AttendanceTable() {
 
       </div>
 
-      {/* =========================
-          OVERALL SUMMARY
-      ========================= */}
+
 
       {overall && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -324,9 +310,7 @@ export default function AttendanceTable() {
         </div>
       )}
 
-      {/* =========================
-          DESKTOP TABLE
-      ========================= */}
+
 
       {attendance.length > 0 && (
         <div className="hidden md:block overflow-hidden rounded-xl border border-slate-800">
@@ -478,9 +462,7 @@ export default function AttendanceTable() {
         </div>
       )}
 
-      {/* =========================
-          MOBILE CARDS
-      ========================= */}
+
 
       {attendance.length > 0 && (
         <div className="md:hidden space-y-3">
