@@ -30,7 +30,8 @@ export default function AIAssistantCard() {
       if (data.success) {
         setReply(data.reply);
       } else {
-        setReply("Sorry, I could not answer your question.");
+        // Show exact error message from API backend
+        setReply(data.message || "Sorry, I could not answer your question.");
       }
     } catch (error) {
       console.error(error);
@@ -43,33 +44,23 @@ export default function AIAssistantCard() {
 
   return (
     <div className="bg-gradient-to-br from-slate-900 to-indigo-950 border border-slate-800 rounded-3xl p-6">
-
       <h2 className="text-xl font-bold text-white mb-5">
         AI Academic Assistant
       </h2>
 
       {/* AI Response */}
-
       <div className="bg-slate-800 rounded-xl p-4 mb-5 text-slate-300 min-h-[80px]">
         {loading ? (
-          <p className="text-indigo-400">
-            AI is thinking...
-          </p>
+          <p className="text-indigo-400">AI is thinking...</p>
         ) : reply ? (
-          <p className="whitespace-pre-wrap">
-            {reply}
-          </p>
+          <p className="whitespace-pre-wrap">{reply}</p>
         ) : (
-          <p>
-            👋 Hi Student! How can I help you today?
-          </p>
+          <p>👋 Hi Student! How can I help you today?</p>
         )}
       </div>
 
       {/* Input */}
-
       <div className="flex gap-3">
-
         <input
           className="flex-1 bg-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="Ask anything..."
@@ -90,9 +81,7 @@ export default function AIAssistantCard() {
         >
           <FaPaperPlane />
         </button>
-
       </div>
-
     </div>
   );
 }

@@ -13,14 +13,14 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db("campus-flow");
 
-    // 1. Logged-in Student Info
+
     const student = await db.collection("users").findOne({ email: session.user.email });
     const studentDept = student?.department || "BBA"; 
 
-    // 2. Dynamic Today's Day Name (e.g., "Thursday")
+   
     const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
-    // 3. Query classSchedule matching Department & Today's Day (Case Insensitive)
+   
     const todaysClasses = await db
       .collection("classSchedule")
       .find({
