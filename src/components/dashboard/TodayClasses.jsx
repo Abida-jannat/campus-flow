@@ -7,7 +7,7 @@ export default function TodayClasses({ classes = [] }) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <BookOpen className="text-indigo-400" size={22} />
-          Today's Classes
+          Todays Classes
         </h2>
         <span className="text-xs font-semibold px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
           {classes.length} Sessions
