@@ -1,15 +1,11 @@
-
-
 "use client";
 
 import { useEffect, useState } from "react";
-
 import StatsCard from "@/components/dashboard/StatsCard";
 import TodayClasses from "@/components/dashboard/TodayClasses";
 import AIAssistantCard from "@/components/dashboard/AIassistant";
 import EmptyRoomCard from "@/components/dashboard/EmptyClss";
 import AnnouncementCard from "@/components/dashboard/Announcements";
-
 import {
   GraduationCap,
   CalendarDays,
@@ -54,7 +50,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-  
       <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-6">
         <StatsCard
           title="Attendance"
@@ -69,7 +64,7 @@ export default function Dashboard() {
           value={dashboardData?.totalCourses ?? 0}
           subtitle="Active courses"
           icon={<BookOpen size={28} />}
-          href="/dashboard/courses"
+          href="#"
         />
 
         <StatsCard
@@ -89,7 +84,6 @@ export default function Dashboard() {
         />
       </div>
 
-
       <div className="grid lg:grid-cols-2 gap-6">
         <TodayClasses
           classes={
@@ -104,10 +98,8 @@ export default function Dashboard() {
         <AnnouncementCard announcements={announcements} />
       </div>
 
-   
       <div className="grid lg:grid-cols-2 gap-6">
         <EmptyRoomCard />
-
         <AIAssistantCard />
       </div>
     </div>

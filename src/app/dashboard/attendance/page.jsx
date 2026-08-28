@@ -36,7 +36,7 @@ export default function StudentAttendancePage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6 max-w-6xl mx-auto space-y-6">
       
-      {/* BACK TO DASHBOARD BUTTON */}
+  
       <div>
         <Link
           href="/dashboard"
@@ -48,7 +48,7 @@ export default function StudentAttendancePage() {
         <h1 className="text-2xl font-bold">My Attendance Dashboard</h1>
       </div>
 
-      {/* OVERALL STATS */}
+  
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex items-center justify-between">
         <div>
           <p className="text-sm text-slate-400">Overall Attendance</p>
@@ -63,7 +63,7 @@ export default function StudentAttendancePage() {
         </div>
       </div>
 
-      {/* COURSE BREAKDOWN */}
+  
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {data?.courses?.map((course) => (
           <div key={course.courseCode} className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">

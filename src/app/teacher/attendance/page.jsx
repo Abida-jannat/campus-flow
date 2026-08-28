@@ -33,9 +33,7 @@ export default function TeacherAttendancePage() {
 
   const [search, setSearch] = useState("");
 
-  // =========================================
-  // LOAD COURSES
-  // =========================================
+
 
   const loadCourses = useCallback(async (isInitialLoad = true) => {
     try {
@@ -74,9 +72,6 @@ export default function TeacherAttendancePage() {
     loadCourses(true);
   }, [loadCourses]);
 
-  // =========================================
-  // LOAD STUDENTS
-  // =========================================
 
   const loadStudents = useCallback(async (courseCode) => {
     setLoadingStudents(true);
@@ -119,9 +114,6 @@ export default function TeacherAttendancePage() {
     loadStudents(selectedCourse);
   }, [selectedCourse, loadStudents]);
 
-  // =========================================
-  // DERIVED DATA
-  // =========================================
 
   const selectedCourseData = useMemo(
     () => courses.find((c) => c.courseCode === selectedCourse),
@@ -154,10 +146,7 @@ export default function TeacherAttendancePage() {
     return { total: students.length, present, absent, late };
   }, [students, statusMap]);
 
-  // =========================================
-  // ACTIONS
-  // =========================================
-
+ 
   const handleStatusChange = (email, status) => {
     setStatusMap((prev) => ({ ...prev, [email]: status }));
   };
@@ -226,9 +215,6 @@ export default function TeacherAttendancePage() {
     year: "numeric",
   });
 
-  // =========================================
-  // LOADING
-  // =========================================
 
   if (loadingCourses) {
     return (

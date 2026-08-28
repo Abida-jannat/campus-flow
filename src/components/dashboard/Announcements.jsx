@@ -42,7 +42,6 @@ export default function AnnouncementCard({ announcements = [] }) {
                 <FaBullhorn className="text-indigo-400 text-lg" />
               </div>
 
-              {/* Content */}
               <div className="flex-1">
                 <h3 className="text-white font-semibold">
                   {item.courseName || item.courseCode || item.title || "Course Notice"}
@@ -52,7 +51,7 @@ export default function AnnouncementCard({ announcements = [] }) {
                   {item.message || item.description}
                 </p>
 
-                {/* Meta info: Posted by & Date */}
+            
                 <div className="flex justify-between items-center mt-3 text-xs text-slate-500">
                <span>
                  Posted by:{" "}

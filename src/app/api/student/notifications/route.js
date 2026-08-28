@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 
-// ১. সব নোটিফিকেশন ও কাউন্ট ফেচ করা
+
 export async function GET() {
   try {
     const client = await clientPromise;
@@ -28,7 +28,7 @@ export async function GET() {
   }
 }
 
-// ২. নোটিফিকেশন ডিলেট করা (একটি একটি করে অথবা সবগুলো একসাথে)
+
 export async function DELETE(request) {
   try {
     const client = await clientPromise;
@@ -38,11 +38,11 @@ export async function DELETE(request) {
     const id = searchParams.get("id");
 
     if (id) {
-      // একটি নির্দিষ্ট নোটিফিকেশন ডিলেট
+      
       await db.collection("notifications").deleteOne({ _id: new ObjectId(id) });
       return NextResponse.json({ success: true, message: "Notification deleted" });
     } else {
-      // সব নোটিফিকেশন একসাথে ডিলেট
+    
       await db.collection("notifications").deleteMany({});
       return NextResponse.json({ success: true, message: "All notifications cleared" });
     }

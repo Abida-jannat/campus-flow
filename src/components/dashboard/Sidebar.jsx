@@ -39,11 +39,7 @@ const menuItems = [
     icon: <FaBullhorn />,
     href: "/dashboard/announcements",
   },
-  {
-    title: "Clubs",
-    icon: <FaUsers />,
-    href: "/dashboard/clubs",
-  },
+  
   {
     title: "Marketplace",
     icon: <FaStore />,

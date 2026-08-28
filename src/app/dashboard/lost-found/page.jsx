@@ -144,7 +144,7 @@ export default function LostAndFoundPage() {
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
+  
       <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-3 text-slate-500" size={18} />
@@ -173,7 +173,7 @@ export default function LostAndFoundPage() {
         </div>
       </div>
 
-      {/* Grid List */}
+  
       {loading ? (
         <div className="py-20 flex justify-center">
           <Loader2 className="animate-spin text-amber-400" size={36} />
@@ -185,7 +185,7 @@ export default function LostAndFoundPage() {
               key={item._id}
               className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-slate-700 transition"
             >
-              {/* Image Container */}
+            
               <div className="w-full h-48 bg-slate-950 relative border-b border-slate-800">
                 {item.image ? (
                   <img
@@ -200,7 +200,7 @@ export default function LostAndFoundPage() {
                   </div>
                 )}
 
-                {/* Status Tag */}
+            
                 <span
                   className={`absolute top-3 right-3 text-white font-bold text-xs px-3 py-1 rounded-lg uppercase shadow-md ${
                     item.type === "lost" ? "bg-rose-600" : "bg-emerald-600"
@@ -209,7 +209,7 @@ export default function LostAndFoundPage() {
                   {item.type}
                 </span>
 
-                {/* Delete Button */}
+       
                 <button
                   onClick={() => handleDelete(item._id)}
                   disabled={deletingId === item._id}
@@ -224,7 +224,7 @@ export default function LostAndFoundPage() {
                 </button>
               </div>
 
-              {/* Details Container */}
+  
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                 <div>
                   <h3 className="font-semibold text-lg text-slate-100 line-clamp-1 mb-1">

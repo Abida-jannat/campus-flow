@@ -7,11 +7,11 @@ export async function POST(req) {
     const client = await clientPromise;
     const db = client.db("campus-flow");
 
-    // Loop through each student attendance entry
+  
     for (const record of attendanceRecords) {
-      const { studentEmail, status } = record; // status: "present", "late", or "absent"
+      const { studentEmail, status } = record; 
 
-      // Check existing attendance record for this student and course
+      
       const existing = await db.collection("attendance").findOne({
         studentEmail,
         courseCode,
@@ -20,15 +20,13 @@ export async function POST(req) {
       let totalClasses = (existing?.totalClasses || 0) + 1;
       let attendedClasses = existing?.attendedClasses || 0;
 
-      // Increment attended count if Present or Late
+    
       if (status === "present" || status === "late") {
         attendedClasses += 1;
       }
 
-      // Calculate percentage
       const percentage = Math.round((attendedClasses / totalClasses) * 100);
 
-      // Update or Insert into 'attendance' collection
       await db.collection("attendance").updateOne(
         { studentEmail, courseCode },
         {

@@ -72,9 +72,6 @@ export default function TeacherSchedulePage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Clicking a day: in ADD mode, toggles it in/out of the array (checkbox
-  // behavior). In EDIT mode, replaces the selection with just that one day
-  // (radio behavior) — since an existing entry is always a single session.
   const handleDayClick = (day) => {
     if (editingEntry) {
       setForm((prev) => ({ ...prev, days: [day] }));
@@ -121,8 +118,7 @@ export default function TeacherSchedulePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (submitting) return; // guards against double-click / double-submit
-
+    if (submitting) return; 
     if (form.days.length === 0) {
       toast.error("Please select at least one day");
       return;
@@ -135,7 +131,7 @@ export default function TeacherSchedulePage() {
       const body = editingEntry
         ? {
             id: editingEntry._id,
-            day: form.days[0], // PUT still expects a single "day"
+            day: form.days[0], 
             startTime: form.startTime,
             endTime: form.endTime,
             building: form.building,
@@ -372,7 +368,7 @@ export default function TeacherSchedulePage() {
                 ))}
               </select>
 
-              {/* DAY SELECTION — checkboxes when adding, single-select when editing */}
+              
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
                   {editingEntry ? "Day" : "Days (select one or more)"}

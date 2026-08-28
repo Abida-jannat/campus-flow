@@ -203,8 +203,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Role selector — determines whether this account lands on
-                the student dashboard or the teacher dashboard after login */}
+          
             <select
               name="role"
               value={formData.role}
@@ -252,7 +251,7 @@ export default function RegisterPage() {
         <option value="English">English</option>
         <option value="Law">Law</option>
         <option value="Data Science">Data Science</option>
-        <option value="Software Engineering">SWE</option>
+        <option value="SWE">Software Engineering (SWE)</option>
               </select>
               
             </div>
@@ -269,7 +268,7 @@ export default function RegisterPage() {
                 <option value="">Select Semester</option>
                 <option value="Spring 2026">Spring 2026</option>
                 <option value="Summer 2026">Summer 2026</option>
-                <option value="Fall 2026">Fall 2026</option>
+                
               </select>
             )}
 

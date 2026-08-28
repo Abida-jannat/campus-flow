@@ -45,9 +45,7 @@ export default function TeacherCoursesPage() {
 
   });
 
-  // =========================================================
-  // LOAD COURSES
-  // =========================================================
+  
 
   const loadCourses = useCallback(async (showRefresh = false) => {
     try {
@@ -89,9 +87,6 @@ export default function TeacherCoursesPage() {
     loadCourses();
   }, [loadCourses]);
 
-  // =========================================================
-  // FORM CHANGE
-  // =========================================================
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -102,9 +97,6 @@ export default function TeacherCoursesPage() {
     }));
   };
 
-  // =========================================================
-  // OPEN ADD FORM
-  // =========================================================
 
   const openAddForm = () => {
     setEditingCourse(null);
@@ -120,9 +112,7 @@ export default function TeacherCoursesPage() {
     setShowForm(true);
   };
 
-  // =========================================================
-  // OPEN EDIT FORM
-  // =========================================================
+
 
   const openEditForm = (course) => {
     setEditingCourse(course);
@@ -138,9 +128,7 @@ export default function TeacherCoursesPage() {
     setShowForm(true);
   };
 
-  // =========================================================
-  // CLOSE FORM
-  // =========================================================
+
 
   const closeForm = () => {
     if (saving) return;
@@ -157,9 +145,7 @@ export default function TeacherCoursesPage() {
     });
   };
 
-  // =========================================================
-  // SUBMIT ADD / EDIT
-  // =========================================================
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -229,9 +215,6 @@ export default function TeacherCoursesPage() {
     }
   };
 
-  // =========================================================
-  // DELETE COURSE
-  // =========================================================
 
   const handleDelete = async () => {
     if (!deleteCourse?._id) return;
@@ -265,9 +248,6 @@ export default function TeacherCoursesPage() {
     }
   };
 
-  // =========================================================
-  // SEARCH
-  // =========================================================
 
   const filteredCourses = courses.filter((course) => {
     const searchText = search.toLowerCase();
@@ -280,9 +260,7 @@ export default function TeacherCoursesPage() {
     );
   });
 
-  // =========================================================
-  // LOADING
-  // =========================================================
+
 
   if (loading) {
     return (
@@ -303,17 +281,11 @@ export default function TeacherCoursesPage() {
     );
   }
 
-  // =========================================================
-  // PAGE
-  // =========================================================
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-7xl mx-auto px-5 py-8 lg:px-8">
-
-        {/* =====================================================
-            TOP NAVIGATION
-        ===================================================== */}
 
         <div className="flex items-center justify-between mb-8">
 
@@ -385,9 +357,6 @@ export default function TeacherCoursesPage() {
 
         </div>
 
-        {/* =====================================================
-            TEACHER INFO
-        ===================================================== */}
 
         {teacher && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-6">
@@ -447,10 +416,6 @@ export default function TeacherCoursesPage() {
           </div>
         )}
 
-        {/* =====================================================
-            SEARCH
-        ===================================================== */}
-
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
 
           <div>
@@ -483,9 +448,6 @@ export default function TeacherCoursesPage() {
 
         </div>
 
-        {/* =====================================================
-            EMPTY STATE
-        ===================================================== */}
 
         {filteredCourses.length === 0 && (
           <div className="bg-slate-900 border border-slate-800 rounded-3xl py-16 px-6 text-center">
@@ -528,10 +490,6 @@ export default function TeacherCoursesPage() {
 
           </div>
         )}
-
-        {/* =====================================================
-            COURSE GRID
-        ===================================================== */}
 
         {filteredCourses.length > 0 && (
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -639,9 +597,7 @@ export default function TeacherCoursesPage() {
 
       </div>
 
-      {/* =======================================================
-          ADD / EDIT MODAL
-      ======================================================= */}
+ 
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -912,9 +868,7 @@ export default function TeacherCoursesPage() {
         </div>
       )}
 
-      {/* =======================================================
-          DELETE CONFIRMATION MODAL
-      ======================================================= */}
+     
 
       {deleteCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

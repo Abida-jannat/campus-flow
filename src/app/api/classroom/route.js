@@ -30,7 +30,7 @@ export async function GET(request) {
       })
       .toArray();
 
-    // Find rooms that are occupied at the requested time
+
     const occupiedRooms = schedules
       .filter((schedule) => {
         return (
@@ -47,7 +47,7 @@ export async function GET(request) {
       ),
     ];
 
-    // Remove occupied rooms
+
     const availableRooms = allRooms.filter(
       (room) => !occupiedRooms.includes(room)
     );

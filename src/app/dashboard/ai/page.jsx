@@ -29,7 +29,7 @@ export default function AIAssistantPage() {
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
 
-  // Handle Text File Reading
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -42,7 +42,7 @@ export default function AIAssistantPage() {
     reader.readAsText(file);
   };
 
-  // Send message for chat tab
+
   const sendMessage = async (textToSend) => {
     const query = textToSend || input;
     if (!query.trim()) return;
@@ -77,7 +77,7 @@ export default function AIAssistantPage() {
     setLoading(false);
   };
 
-  // Summarize Academic Notes
+
   const handleSummarizeNotes = async (actionType) => {
     if (!notesInput.trim()) return;
 
@@ -110,7 +110,7 @@ export default function AIAssistantPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] max-w-5xl mx-auto p-4 gap-4">
-      {/* Header with Back to Dashboard Button */}
+     
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           <Link
@@ -151,7 +151,7 @@ export default function AIAssistantPage() {
         </div>
       </div>
 
-      {/* TAB 1: AI CHAT */}
+    
       {activeTab === "chat" && (
         <>
           {/* Chat Container with Clear Chat Header */}
@@ -215,10 +215,10 @@ export default function AIAssistantPage() {
         </>
       )}
 
-      {/* TAB 2: ACADEMIC NOTES TOOL */}
+   
       {activeTab === "notes" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
-          {/* Notes Input Area */}
+        
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 flex flex-col gap-3">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-white">Paste Notes / Upload File</h3>
@@ -274,7 +274,7 @@ export default function AIAssistantPage() {
             </div>
           </div>
 
-          {/* AI Output Area */}
+        
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-white">AI Study Insights</h3>

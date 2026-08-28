@@ -14,20 +14,20 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db("campus-flow");
 
-    // 1. Get Logged-in Student profile to check their department
+
     const student = await db.collection("users").findOne({ email: session.user.email });
     
-    // Default department or student's department (e.g., "BBA")
+   
     const studentDept = student?.department || "BBA"; 
 
-    // 2. Fetch all schedules for this Department OR fetch all if department is not strictly filtered
+   
     const schedule = await db
       .collection("classSchedule")
       .find({
         $or: [
           { department: { $regex: new RegExp(`^${studentDept}$`, "i") } },
-          { department: { $exists: false } }, // Fallback for schedules added without dept field
-          { courseCode: { $regex: /^BBA/i } } // Matches BBA-110, BBA-222, BBA-324 etc.
+          { department: { $exists: false } }, 
+          { courseCode: { $regex: /^BBA/i } } 
         ]
       })
       .sort({ startTime: 1 })

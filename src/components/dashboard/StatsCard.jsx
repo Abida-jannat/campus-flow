@@ -8,11 +8,13 @@ export default function StatsCard({
   value,
   subtitle,
   icon,
-  href = "#", 
+   href="#",
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 transition duration-300 hover:border-indigo-500 hover:-translate-y-1">
-    
+    <Link
+      href={href}
+      className="group relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 transition duration-300 hover:border-indigo-500 hover:-translate-y-1 block cursor-pointer"
+    >
       <div className="absolute -top-10 -right-10 h-36 w-36 rounded-full bg-indigo-600/20 blur-3xl group-hover:bg-indigo-500/30 transition"></div>
 
       <div className="relative flex justify-between items-start">
@@ -29,24 +31,19 @@ export default function StatsCard({
           </div>
         </div>
 
-  
         <div className="h-14 w-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
           {icon}
         </div>
       </div>
 
-      
-      <Link
-        href={href}
-        className="mt-8 flex justify-between items-center text-slate-400 hover:text-white transition cursor-pointer"
-      >
+      <div className="mt-8 flex justify-between items-center text-slate-400 group-hover:text-white transition">
         <span className="text-sm font-medium">View Details</span>
 
         <ArrowUpRight
           size={18}
           className="text-indigo-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition"
         />
-      </Link>
-    </div>
+      </div>
+    </Link>
   );
 }

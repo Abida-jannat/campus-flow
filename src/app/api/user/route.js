@@ -33,7 +33,7 @@ export async function GET() {
   }
 }
 
-// নতুন PUT মেথড যা সেটিংস থেকে পাঠানো ডেটা (Student ID, Department, Name, Image) ডাটাবেসে সেভ করবে
+
 export async function PUT(request) {
   try {
     const session = await auth.api.getSession({
@@ -53,7 +53,6 @@ export async function PUT(request) {
     const client = await clientPromise;
     const db = client.db("campus-flow");
 
-    // ডাটাবেসে ইউজারের তথ্য আপডেট করা
     const result = await db.collection("user").updateOne(
       { email: session.user.email },
       {

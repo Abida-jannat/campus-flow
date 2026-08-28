@@ -27,9 +27,6 @@ async function getTeacher() {
   return { session, client, db, teacher };
 }
 
-/* =========================
-   GET COURSES
-========================= */
 
 export async function GET() {
   try {

@@ -2,37 +2,52 @@
 
 import { useEffect, useState } from "react";
 import { FaBullhorn } from "react-icons/fa";
-
+import { RefreshCw } from "lucide-react";
 
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function fetchAnnouncements(isBackground = false) {
+    try {
+      if (!isBackground) setLoading(true);
+      else setRefreshing(true);
+
+      const res = await fetch("/api/student/announcements", {
+        cache: "no-store",
+        credentials: "include",
+      });
+
+      const contentType = res.headers.get("content-type");
+      if (!res.ok || !contentType || !contentType.includes("application/json")) {
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        setAnnouncements(data.announcements || []);
+      }
+    } catch (error) {
+      console.error("Error loading announcements:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchAnnouncements() {
-      try {
-        const res = await fetch("/api/student/announcements", {
-          credentials: "include",
-        });
-
-        const contentType = res.headers.get("content-type");
-        if (!res.ok || !contentType || !contentType.includes("application/json")) {
-          console.error("API route not returning JSON. Received status:", res.status);
-          return;
-        }
-
-        const data = await res.json();
-        if (data.success) {
-          setAnnouncements(data.announcements || []);
-        }
-      } catch (error) {
-        console.error("Error loading announcements:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
+    
+    loadStudents();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
     fetchAnnouncements();
+
+   
+    const interval = setInterval(() => {
+      fetchAnnouncements(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   function formatDate(dateString) {
@@ -53,6 +68,14 @@ export default function AnnouncementsPage() {
             Stay updated with your latest course updates and notices.
           </p>
         </div>
+
+        <button
+          onClick={() => fetchAnnouncements()}
+          className="flex items-center gap-2 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-slate-300 px-4 py-2 rounded-xl text-sm transition cursor-pointer"
+        >
+          <RefreshCw size={15} className={refreshing ? "animate-spin text-indigo-400" : ""} />
+          <span>Refresh</span>
+        </button>
       </div>
 
       <div className="space-y-4">
@@ -88,7 +111,6 @@ export default function AnnouncementsPage() {
                   {item.message || item.description}
                 </p>
 
-                {/* Footer Section: Posted by (Left) & Date (Right) */}
                 <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-800/60 text-xs text-slate-500">
                   <span>
                     Posted by:{" "}

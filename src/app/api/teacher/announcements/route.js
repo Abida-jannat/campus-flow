@@ -46,7 +46,7 @@ export async function GET() {
 
     const { db, teacher } = data;
 
-    // Fetch announcements filtered by teacher name or email
+
     const announcements = await db
       .collection("announcements")
       .find({
@@ -59,7 +59,7 @@ export async function GET() {
       return NextResponse.json({ success: true, announcements: [] });
     }
 
-    // Single query batch fetch to prevent N+1 overhead
+
     const courseCodes = [...new Set(announcements.map((a) => a.courseCode))];
 
     const courses = await db
@@ -136,7 +136,7 @@ export async function POST(request) {
       );
     }
 
-    // Verify course belongs to teacher
+   
     const course = await db.collection("courses").findOne({
       courseCode: courseCode.trim(),
       $or: [{ teacherEmail: teacher.email }, { teacher: teacher.name }],

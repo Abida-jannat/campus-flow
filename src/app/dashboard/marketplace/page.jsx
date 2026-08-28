@@ -24,7 +24,6 @@ export default function MarketplacePage() {
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Form State without Category, with Image URL
   const [formData, setFormData] = useState({
     title: "",
     price: "",
@@ -52,7 +51,7 @@ export default function MarketplacePage() {
     fetchItems();
   }, []);
 
-  // Delete Item Function
+ 
   const handleDelete = async (itemId) => {
     if (!confirm("Are you sure you want to delete this listing?")) return;
 
@@ -142,7 +141,7 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Search Filter */}
+  
       <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
         <div className="relative w-full">
           <Search className="absolute left-3.5 top-3 text-slate-500" size={18} />
@@ -156,7 +155,7 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Items Grid View with Images */}
+
       {loading ? (
         <div className="py-20 flex justify-center">
           <Loader2 className="animate-spin text-indigo-400" size={36} />
@@ -168,7 +167,7 @@ export default function MarketplacePage() {
               key={item._id}
               className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-slate-700 transition"
             >
-              {/* Product Image */}
+    
               <div className="w-full h-48 bg-slate-950 relative border-b border-slate-800">
                 {item.image ? (
                   <img

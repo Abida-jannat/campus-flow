@@ -8,10 +8,8 @@ import { FaGraduationCap, FaArrowRight } from "react-icons/fa";
 import { HiOutlineAcademicCap } from "react-icons/hi";
 import toast from "react-hot-toast";
 
-//Doing ui nehla sultana labiba
 
-// Sends a logged-in user to the right dashboard based on their role.
-// Used both for the "already logged in" redirect and the post-login redirect.
+
 function redirectByRole(router, role) {
   if (role === "teacher") {
     router.push("/teacher");
@@ -65,14 +63,11 @@ export default function LoginPage() {
     try {
 
       await authClient.signOut();
-
-
       const { data, error } = await authClient.signIn.email({
         email: formData.email,
         password: formData.password,
 
       });
-
       if (error) {
         const errorMsg = error.message ? error.message.toLowerCase() : "";
 
@@ -101,13 +96,11 @@ export default function LoginPage() {
 
       toast.success("Welcome Back 👋");
 
-      // Fetch the fresh session so we know the user's role right after login,
-      // then send them to the matching dashboard instead of always "/dashboard".
       const session = await authClient.getSession();
 
-console.log("FULL SESSION:", session);
-console.log("LOGGED-IN USER:", session?.data?.user);
-console.log("USER ROLE:", session?.data?.user?.role);
+     console.log("FULL SESSION:", session);
+      console.log("LOGGED-IN USER:", session?.data?.user);
+      console.log("USER ROLE:", session?.data?.user?.role);
 
       const role = session?.data?.user?.role;
  
@@ -132,7 +125,7 @@ console.log("USER ROLE:", session?.data?.user?.role);
 
         <div className="hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 relative overflow-hidden">
 
-          {/* Background Glow */}
+  
           <div className="absolute w-72 h-72 bg-indigo-600/20 rounded-full blur-3xl -top-20 -left-20"></div>
 
           <div className="absolute w-80 h-80 bg-purple-600/20 rounded-full blur-3xl -bottom-24 -right-20"></div>
@@ -275,7 +268,7 @@ console.log("USER ROLE:", session?.data?.user?.role);
 
             <button
               type="submit"
-              disabled={loading} // Prevent double submission
+              disabled={loading} 
               className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Signing in..." : "Login"}

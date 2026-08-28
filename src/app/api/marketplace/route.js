@@ -107,7 +107,7 @@ export async function DELETE(request) {
     const client = await clientPromise;
     const db = client.db("campus-flow");
 
-    // Only delete if the item exists and belongs to the logged-in user
+    
     const result = await db.collection("marketplace").deleteOne({
       _id: new ObjectId(id),
       userEmail: session.user.email,

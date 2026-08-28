@@ -36,14 +36,14 @@ export default function SchedulePage() {
     fetchFullSchedule();
   }, []);
 
-  // Filter classes for selected day
+  
   const filteredSchedule = schedule.filter(
     (item) => item.day?.toLowerCase() === selectedDay.toLowerCase()
   );
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
+    
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Calendar className="text-indigo-400" size={26} /> My Class Schedule
@@ -53,7 +53,6 @@ export default function SchedulePage() {
         </p>
       </div>
 
-      {/* Day Selector Tabs (Sunday to Saturday) */}
       <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-800">
         {daysOfWeek.map((day) => {
           const isToday = todayName.toLowerCase() === day.toLowerCase();
@@ -89,7 +88,7 @@ export default function SchedulePage() {
         })}
       </div>
 
-      {/* Schedule Content */}
+
       {loading ? (
         <div className="py-20 text-center text-slate-400">Loading schedule...</div>
       ) : filteredSchedule.length === 0 ? (

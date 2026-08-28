@@ -55,31 +55,43 @@ export default function Topbar() {
     setSearchQuery("");
   };
 
-  // 2. User Data Fetch
-  useEffect(() => {
-    async function getUser() {
-      try {
-        const res = await fetch("/api/user");
-        if (!res.ok) return;
-        const data = await res.json();
-        setUser(data);
-      } catch (error) {
-        console.error("User fetch error:", error);
-      }
+  // 2. User Data Fetch Function
+  const getUser = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user");
+      if (!res.ok) return;
+      const data = await res.json();
+      setUser(data);
+    } catch (error) {
+      console.error("User fetch error:", error);
     }
-    getUser();
   }, []);
 
-  // 3. Notification Fetching & Polling
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
+    getUser();
+
+    
+    const handleProfileUpdate = () => {
+      getUser();
+    };
+
+    window.addEventListener("profileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate);
+    };
+  }, [getUser]);
+
+
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/student/notifications");
       if (!res.ok) return;
       const data = await res.json();
 
-      if (data.success) {
+      if (data && Array.isArray(data.notifications)) {
         const currentCount = data.unreadCount || 0;
-        setNotifications(data.notifications || []);
+        setNotifications(data.notifications);
 
         if (!isInitialFetch.current && currentCount > previousCountRef.current) {
           if (data.latestNotification) {
@@ -104,7 +116,7 @@ export default function Topbar() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 1000);
+    const interval = setInterval(fetchNotifications, 5000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
@@ -299,11 +311,17 @@ export default function Topbar() {
               href="/dashboard/settings"
               className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-3 py-2 hover:border-indigo-500 transition cursor-pointer"
             >
-              <img
-                src={user?.image || "https://i.pravatar.cc/100"}
-                alt="profile"
-                className="w-11 h-11 rounded-xl object-cover"
-              />
+              {user?.image ? (
+                <img
+                  src={user.image}
+                  alt="profile"
+                  className="w-11 h-11 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-base">
+                  {user?.name ? user.name.charAt(0).toUpperCase() : "S"}
+                </div>
+              )}
               <div className="text-left hidden lg:block">
                 <p className="text-white font-semibold">
                   {user?.name || "Student"}

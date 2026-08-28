@@ -14,7 +14,7 @@ export default function TodayClasses({ classes = [] }) {
         </span>
       </div>
 
-      {/* Main Content Area */}
+
       {classes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800/80 rounded-2xl p-8 my-auto">
           <p className="text-slate-400 text-sm font-medium text-center">
@@ -29,7 +29,7 @@ export default function TodayClasses({ classes = [] }) {
               className="flex justify-between items-center bg-slate-950/70 border border-slate-800 rounded-2xl p-4 hover:border-indigo-500/50 transition group"
             >
               <div className="flex items-center gap-4">
-                {/* Left Color Indicator Bar */}
+          
                 <div className="w-2 h-14 rounded-full bg-indigo-500 group-hover:bg-indigo-400 transition"></div>
 
                 <div>

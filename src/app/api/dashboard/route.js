@@ -20,7 +20,7 @@ export async function GET() {
     const db = client.db("campus-flow");
     const userEmail = session.user.email;
 
-    // 1. Fetch Logged-in User (Checking both "user" and "users" collections for safety)
+  
     let user = await db.collection("users").findOne({ email: userEmail });
     if (!user) {
       user = await db.collection("user").findOne({ email: userEmail });
@@ -36,7 +36,6 @@ export async function GET() {
     const userDept = user.department || "BBA";
     const userSem = user.semester;
 
-    // 2. Courses Filter
     const courseQuery = {
       department: { $regex: new RegExp(`^${userDept}$`, "i") },
     };
@@ -49,13 +48,12 @@ export async function GET() {
       .find(courseQuery)
       .toArray();
 
-    // 3. Attendance Calculation
     const attendance = await db
       .collection("attendance")
       .find({ studentEmail: userEmail })
       .toArray();
 
-    let averageAttendance = 85; // Fallback default
+    let averageAttendance = 0; 
     if (attendance.length > 0) {
       const total = attendance.reduce(
         (sum, item) => sum + (item.percentage || 0),
@@ -64,7 +62,6 @@ export async function GET() {
       averageAttendance = Math.round(total / attendance.length);
     }
 
-    // 4. Today's Classes Fix (Flexible regex matching for Department & Day)
     const today = new Date().toLocaleDateString("en-US", {
       weekday: "long",
     });
@@ -82,7 +79,7 @@ export async function GET() {
       ]
     };
 
-    // Include semester filter only if it exists on schedule documents
+
     if (userSem) {
       classQuery.$and.push({
         $or: [{ semester: userSem }, { semester: { $exists: false } }]
@@ -95,7 +92,6 @@ export async function GET() {
       .sort({ startTime: 1 })
       .toArray();
 
-    // 5. Announcements
     const announcements = await db
       .collection("announcements")
       .find({
@@ -107,15 +103,15 @@ export async function GET() {
       .sort({ date: -1 })
       .toArray();
 
-    // Response structure supporting multiple key styles
+  
     return NextResponse.json({
       user,
       attendance: averageAttendance,
       totalCourses: courses.length,
       courses,
-      todayClasses,       // camelCase
-      todaysClasses: todayClasses, // alias for safety
-      TodayClasses: todayClasses,  // PascalCase alias
+      todayClasses,     
+      todaysClasses: todayClasses, 
+      TodayClasses: todayClasses,  
       announcements,
     });
   } catch (error) {
