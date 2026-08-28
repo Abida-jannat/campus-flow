@@ -11,7 +11,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  // Avoid hydration mismatch on initial render
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
     setMounted(true);
@@ -28,7 +28,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
     <nav className="w-full bg-background/80 backdrop-blur-lg border-b border-slate-700/40 transition-colors duration-300">
       <div className="max-w-8xl mx-auto flex items-center justify-between px-4 sm:px-8 md:px-15 py-4">
         
-        {/* Logo */}
+ 
         <button onClick={() => setActiveTab && setActiveTab("home")} className="flex items-center gap-2">
           <div className="w-11 h-11 rounded-xl bg-indigo-600 flex items-center justify-center">
             <FaGraduationCap className="text-white text-2xl" />
@@ -38,7 +38,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
           </h1>
         </button>
 
-        {/* Desktop Links */}
+    
         <ul className="hidden md:flex items-center gap-10 font-medium">
           {navLinks.map((link) => {
             const isActive = activeTab === link.id;
@@ -60,9 +60,9 @@ export default function Navbar({ activeTab, setActiveTab }) {
           })}
         </ul>
 
-        {/* Desktop Actions */}
+
         <div className="hidden md:flex items-center gap-4">
-          {/* Universal Theme Toggle Button */}
+
           {mounted && (
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -90,7 +90,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
           </Link>
         </div>
 
-        {/* Mobile Controls */}
+
         <div className="flex md:hidden items-center gap-3">
           {mounted && (
             <button

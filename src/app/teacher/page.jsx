@@ -185,7 +185,8 @@ export default function TeacherDashboard() {
       >
   
      <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold overflow-hidden">
-      {teacher?.image ? (
+       {teacher?.image ?
+        (
         <img
         src={teacher.image}
         alt={teacher?.name || "Teacher"}

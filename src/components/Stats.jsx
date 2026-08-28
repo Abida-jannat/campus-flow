@@ -6,8 +6,10 @@ import {
 } from "react-icons/fa";
 
 const stats = [
+
   {
-    icon: <FaUsers className="text-3xl text-blue-500 dark:text-blue-400" />,
+    icon: <FaUsers className="text-3xl text-blue-500 dark:text-blue-400"
+    />,
     number: "5,000+",
     title: "Active Students",
   },

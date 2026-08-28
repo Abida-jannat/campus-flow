@@ -21,14 +21,14 @@ export default function Topbar() {
   const [latestNotice, setLatestNotice] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Search input state & Next.js Router
+
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
   const previousCountRef = useRef(0);
   const isInitialFetch = useRef(true);
 
-  // 1. Search Submission Handler
+
   const handleSearch = (e) => {
     e.preventDefault();
     const term = searchQuery.trim().toLowerCase();
@@ -55,7 +55,7 @@ export default function Topbar() {
     setSearchQuery("");
   };
 
-  // 2. User Data Fetch Function
+
   const getUser = useCallback(async () => {
     try {
       const res = await fetch("/api/user");
