@@ -2,10 +2,10 @@ import { Clock, MapPin, User, BookOpen } from "lucide-react";
 
 export default function TodayClasses({ classes = [] }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between h-full min-h-[400px]">
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl flex flex-col justify-between h-full min-h-[400px]">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
           <BookOpen className="text-indigo-400" size={22} />
           Todays Classes
         </h2>
@@ -13,7 +13,6 @@ export default function TodayClasses({ classes = [] }) {
           {classes.length} Sessions
         </span>
       </div>
-
 
       {classes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800/80 rounded-2xl p-8 my-auto">
@@ -26,14 +25,14 @@ export default function TodayClasses({ classes = [] }) {
           {classes.map((item) => (
             <div
               key={item._id}
-              className="flex justify-between items-center bg-slate-950/70 border border-slate-800 rounded-2xl p-4 hover:border-indigo-500/50 transition group"
+              className="flex justify-between items-start sm:items-center bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 sm:p-4 hover:border-indigo-500/50 transition group gap-3"
             >
-              <div className="flex items-center gap-4">
-          
-                <div className="w-2 h-14 rounded-full bg-indigo-500 group-hover:bg-indigo-400 transition"></div>
+              <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                
+                <div className="w-2 h-14 rounded-full bg-indigo-500 group-hover:bg-indigo-400 transition flex-shrink-0 mt-1 sm:mt-0"></div>
 
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
                       {item.courseCode}
                     </span>
@@ -44,30 +43,32 @@ export default function TodayClasses({ classes = [] }) {
                     )}
                   </div>
 
-                  <h3 className="text-white font-semibold text-base mt-1">
+                  <h3 className="text-white font-semibold text-sm sm:text-base mt-1 truncate">
                     {item.courseName}
                   </h3>
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-slate-400 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 text-slate-400 text-xs">
                     <span className="flex items-center gap-1">
-                      <Clock size={13} className="text-indigo-400" />
+                      <Clock size={13} className="text-indigo-400 flex-shrink-0" />
                       {item.startTime} - {item.endTime}
                     </span>
 
-                    <span className="flex items-center gap-1">
-                      <MapPin size={13} className="text-indigo-400" />
-                      {item.building} {item.floor ? `, ${item.floor}` : ""}, Room {item.room}
+                    <span className="flex items-center gap-1 truncate">
+                      <MapPin size={13} className="text-indigo-400 flex-shrink-0" />
+                      <span className="truncate">
+                        {item.building} {item.floor ? `, ${item.floor}` : ""}, Room {item.room}
+                      </span>
                     </span>
 
-                    <span className="flex items-center gap-1">
-                      <User size={13} className="text-indigo-400" />
-                      {item.teacher}
+                    <span className="flex items-center gap-1 truncate">
+                      <User size={13} className="text-indigo-400 flex-shrink-0" />
+                      <span className="truncate">{item.teacher}</span>
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="hidden md:block">
+              <div className="hidden md:block flex-shrink-0">
                 <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700">
                   {item.day}
                 </span>

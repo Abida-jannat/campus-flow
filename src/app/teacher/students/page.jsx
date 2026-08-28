@@ -30,7 +30,7 @@ export default function TeacherStudentsPage() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern//
     loadStudents();
   }, [loadStudents]);
 

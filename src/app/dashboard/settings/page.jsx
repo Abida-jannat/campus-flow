@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [savedMessage, setSavedMessage] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -39,6 +41,8 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern//
+    setMounted(true);
     async function getUserData() {
       try {
         const res = await fetch("/api/user", {
@@ -160,10 +164,10 @@ export default function SettingsPage() {
     }
   };
 
-  if (pageLoading) {
+  if (!mounted || pageLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-2">
-        <p className="text-xs text-slate-400">Loading settings...</p>
+      <div className="flex justify-center items-center h-[calc(100vh-5rem)]">
+        <p className="text-indigo-400 text-xs animate-pulse font-medium">Loading details...</p>
       </div>
     );
   }

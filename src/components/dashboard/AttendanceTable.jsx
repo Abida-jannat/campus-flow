@@ -85,14 +85,12 @@ export default function AttendanceTable() {
     return "bg-red-500";
   };
 
-
-
-  if (loading) {
+   if (loading) {
     return (
       <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6">
         <div className="flex items-center justify-center gap-3 py-12 text-slate-400">
           <Loader2
-            size={20}
+            size={16}
             className="animate-spin"
           />
 
@@ -104,6 +102,8 @@ export default function AttendanceTable() {
     );
   }
 
+
+  
 
  return (
     <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6">
