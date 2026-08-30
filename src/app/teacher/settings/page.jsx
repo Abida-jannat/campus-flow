@@ -572,8 +572,7 @@ export default function TeacherSettings() {
                 Account Role
               </label>
 
-              <div class
-                Name="relative">
+              <div className="relative">
                 <ShieldCheck
                   size={18}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400"
