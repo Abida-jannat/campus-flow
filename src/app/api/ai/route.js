@@ -1,16 +1,20 @@
 import Groq from "groq-sdk";
+import { requireUser, json } from "@/lib/api";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+export const dynamic = "force-dynamic";
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req) {
   try {
-    const { message } = await req.json();
 
-    if (!message) {
-      return Response.json({ success: false, message: "Message is required" }, { status: 400 });
-    }
+    const { error } = await requireUser();
+    if (error) return error;
+
+    const body = await req.json();
+    const message = typeof body?.message === "string" ? body.message.trim() : "";
+    if (!message) return json({ success: false, message: "Message is required" }, 400);
+    if (message.length > 4000) return json({ success: false, message: "Message is too long" }, 400);
 
     const completion = await groq.chat.completions.create({
       model: "openai/gpt-oss-120b",
@@ -27,13 +31,9 @@ export async function POST(req) {
     });
 
     const reply = completion.choices[0]?.message?.content || "No response generated.";
-
-    return Response.json({ success: true, reply });
-  } catch (error) {
-    console.error("Groq API Error:", error);
-    return Response.json(
-      { success: false, message: error.message || "AI assistant failed to respond" },
-      { status: 500 }
-    );
+    return json({ success: true, reply });
+  } catch (err) {
+    console.error("Groq API Error:", err);
+    return json({ success: false, message: "AI assistant failed to respond" }, 500);
   }
 }

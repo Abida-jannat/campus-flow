@@ -1,157 +1,113 @@
+import { getDb } from "@/lib/mongodb";
+import { requireUser, json, todayISO } from "@/lib/api";
 
-import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import clientPromise from "@/lib/mongodb";
-import { auth } from "@/lib/auth";
+export const dynamic = "force-dynamic";
+
+const VALID_STATUS = new Set(["present", "absent", "late"]);
 
 export async function POST(request) {
   try {
-    
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, message: "Not authenticated" },
-        { status: 401 }
-      );
-    }
-
-
+    const { user: teacher, error } = await requireUser({ role: "teacher" });
+    if (error) return error;
 
     const body = await request.json();
-
     const { courseCode, records } = body;
 
-    if (!courseCode) {
-      return NextResponse.json(
-        { success: false, message: "Course code is required" },
-        { status: 400 }
-      );
+    if (!courseCode || typeof courseCode !== "string") {
+      return json({ success: false, message: "Course code is required" }, 400);
+    }
+    if (!Array.isArray(records) || records.length === 0 || records.length > 500) {
+      return json({ success: false, message: "Attendance records are required" }, 400);
     }
 
-    if (!Array.isArray(records) || records.length === 0) {
-      return NextResponse.json(
-        { success: false, message: "Attendance records are required" },
-        { status: 400 }
-      );
-    }
+    const db = await getDb();
 
-
-    const client = await clientPromise;
-    const db = client.db("campus-flow");
-
-  
-    const teacher = await db.collection("user").findOne({
-      email: session.user.email,
-    });
-
-    if (!teacher) {
-      return NextResponse.json(
-        { success: false, message: "Teacher not found" },
-        { status: 404 }
-      );
-    }
-
-
-
-    const course = await db.collection("courses").findOne({
-      courseCode: courseCode,
-      teacher: teacher.name,
-    });
-
+    const course = await db.collection("courses").findOne({ courseCode, teacher: teacher.name });
     if (!course) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course not found or does not belong to this teacher",
-        },
-        { status: 403 }
-      );
+      return json({ success: false, message: "Course not found or does not belong to this teacher" }, 403);
     }
 
-    const date = new Date().toISOString().split("T")[0];
+ 
+    const emails = [...new Set(records.map((r) => r?.studentEmail).filter((e) => typeof e === "string"))];
+    const validStudents = await db
+      .collection("user")
+      .find({ role: "student", department: course.department, semester: course.semester, email: { $in: emails } })
+      .project({ email: 1 })
+      .toArray();
+    const allowed = new Set(validStudents.map((s) => s.email));
 
-  
-    const attendanceRecords = records.map((record) => ({
-      teacher: teacher.name,
-      teacherEmail: teacher.email,
+    const clean = records.filter((r) => allowed.has(r?.studentEmail) && VALID_STATUS.has(String(r.status).toLowerCase()));
+    if (clean.length === 0) {
+      return json({ success: false, message: "No valid student records" }, 400);
+    }
 
-      courseCode: course.courseCode,
-      courseName: course.courseName || "",
+    const date = todayISO();
+    const now = new Date();
 
-      studentEmail: record.studentEmail,
-      status: record.status, 
-      date: date,
 
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
+    await db.collection("attendance").bulkWrite(
+      clean.map((r) => ({
+        updateOne: {
+          filter: { courseCode: course.courseCode, studentEmail: r.studentEmail, date },
+          update: {
+            $set: {
+              teacher: teacher.name,
+              teacherEmail: teacher.email,
+              courseName: course.courseName || "",
+              status: String(r.status).toLowerCase(),
+              updatedAt: now,
+            },
+            $setOnInsert: { createdAt: now },
+          },
+          upsert: true,
+        },
+      }))
+    );
 
-    const studentEmails = attendanceRecords.map((r) => r.studentEmail);
 
-    
-    await db.collection("attendance").deleteMany({
-      teacherEmail: teacher.email,
-      courseCode: courseCode,
-      date: date,
-      studentEmail: { $in: studentEmails },
-    });
-
-    // Insert daily logs
-    await db.collection("attendance").insertMany(attendanceRecords);
-
-   
-    for (const record of records) {
-      const { studentEmail, status } = record;
-
-      // Check current aggregate status for student in this course
-      const summary = await db.collection("summary_attendance").findOne({
-        studentEmail,
-        courseCode,
-      });
-
-      let totalClasses = (summary?.totalClasses || 0) + 1;
-      let attendedClasses = summary?.attendedClasses || 0;
-
-      if (status === "present" || status === "late") {
-        attendedClasses += 1;
-      }
-
-      const percentage = Math.round((attendedClasses / totalClasses) * 100);
-
-      await db.collection("summary_attendance").updateOne(
-        { studentEmail, courseCode },
+    const studentEmails = clean.map((r) => r.studentEmail);
+    const totals = await db
+      .collection("attendance")
+      .aggregate([
+        { $match: { courseCode: course.courseCode, studentEmail: { $in: studentEmails } } },
+        { $addFields: { s: { $toLower: { $ifNull: ["$status", ""] } } } },
         {
-          $set: {
-            courseName: course.courseName || "",
-            totalClasses,
-            attendedClasses,
-            percentage,
-            lastUpdated: new Date(),
+          $group: {
+            _id: "$studentEmail",
+            totalClasses: { $sum: 1 },
+            attendedClasses: { $sum: { $cond: [{ $in: ["$s", ["present", "late"]] }, 1, 0] } },
           },
         },
-        { upsert: true }
+      ])
+      .toArray();
+
+    if (totals.length) {
+      await db.collection("summary_attendance").bulkWrite(
+        totals.map((t) => ({
+          updateOne: {
+            filter: { studentEmail: t._id, courseCode: course.courseCode },
+            update: {
+              $set: {
+                courseName: course.courseName || "",
+                totalClasses: t.totalClasses,
+                attendedClasses: t.attendedClasses,
+                percentage: Math.round((t.attendedClasses / t.totalClasses) * 100),
+                lastUpdated: now,
+              },
+            },
+            upsert: true,
+          },
+        }))
       );
     }
 
-
-    return NextResponse.json({
+    return json({
       success: true,
       message: "Attendance saved and percentages updated successfully",
-      count: attendanceRecords.length,
+      count: clean.length,
     });
-  } catch (error) {
-    console.error("Save Attendance Error:", error);
-    
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to save attendance",
-        error: error.message,
-      },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("Save Attendance Error:", err);
+    return json({ success: false, message: "Failed to save attendance" }, 500);
   }
 }

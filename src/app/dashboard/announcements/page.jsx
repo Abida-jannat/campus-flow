@@ -40,11 +40,16 @@ export default function AnnouncementsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
     fetchAnnouncements();
 
-    const interval = setInterval(() => {
-      fetchAnnouncements(true);
-    }, 10000);
+    const tick = () => {
+      if (!document.hidden) fetchAnnouncements(true);
+    };
+    const interval = setInterval(tick, 60000);
+    document.addEventListener("visibilitychange", tick);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, []);
 
   function formatDate(dateString) {

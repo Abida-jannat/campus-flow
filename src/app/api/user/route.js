@@ -1,76 +1,46 @@
-import { auth } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { getDb } from "@/lib/mongodb";
+import { requireUser, json } from "@/lib/api";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const { user, error } = await requireUser();
+    if (error) return error;
 
-    if (!session) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const client = await clientPromise;
-    const db = client.db("campus-flow");
-
-    const user = await db.collection("user").findOne({
-      email: session.user.email,
-    });
-
-    return NextResponse.json(user);
-  } catch (error) {
-    console.log(error);
-    return NextResponse.json(
-      { message: "Server Error" },
-      { status: 500 }
-    );
+    const db = await getDb();
+    const doc = await db.collection("user").findOne({ email: user.email });
+    return json(doc);
+  } catch (err) {
+    console.error("GET user error:", err);
+    return json({ message: "Server Error" }, 500);
   }
 }
 
-
 export async function PUT(request) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const { user, error } = await requireUser();
+    if (error) return error;
 
     const body = await request.json();
-    const { name, studentId, department, image } = body;
-
-    const client = await clientPromise;
-    const db = client.db("campus-flow");
-
-    const result = await db.collection("user").updateOne(
-      { email: session.user.email },
-      {
-        $set: {
-          name: name,
-          studentId: studentId,
-          department: department,
-          image: image,
-        },
+    const set = {};
+    // Only write fields that were actually sent (before, missing fields were saved as null).
+    if (typeof body.name === "string" && body.name.trim()) set.name = body.name.trim().slice(0, 100);
+    if (typeof body.studentId === "string") set.studentId = body.studentId.trim().slice(0, 50);
+    if (typeof body.department === "string") set.department = body.department.trim().slice(0, 100);
+    if (typeof body.image === "string" || body.image === null) {
+      if (body.image && body.image.length > 300_000) {
+        return json({ message: "Image is too large" }, 413);
       }
-    );
+      set.image = body.image;
+    }
+    if (Object.keys(set).length === 0) return json({ message: "Nothing to update" }, 400);
 
-    return NextResponse.json({ message: "Profile updated successfully", result });
-  } catch (error) {
-    console.log("PUT Error:", error);
-    return NextResponse.json(
-      { message: "Server Error" },
-      { status: 500 }
-    );
+    const db = await getDb();
+    await db.collection("user").updateOne({ email: user.email }, { $set: set });
+    return json({ message: "Profile updated successfully" });
+  } catch (err) {
+    console.error("PUT user error:", err);
+    return json({ message: "Server Error" }, 500);
   }
 }

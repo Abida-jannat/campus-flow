@@ -9,20 +9,20 @@ export async function POST(req) {
     const client = await clientPromise;
     const db = client.db("campus-flow");
 
-    // ১. প্রথমে user কালেকশন থেকে userId বের করা
+
     const user = await db.collection("user").findOne({ email });
 
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    // ২. account কালেকশন থেকে ঐ ইউজারের পাসওয়ার্ড অ্যাকাউন্ট চেক করা
+
     const account = await db.collection("account").findOne({
-      userId: user._id.toString(), // অথবা user.id (যদি string হিসেবে থাকে)
+      userId: user._id.toString(),
       providerId: "credential",
     });
 
-    // ৩. যদি account না থাকে অথবা Google দিয়ে সাইনআপ করা থাকে
+  
     if (!account || !account.password) {
       return NextResponse.json(
         { message: "This account was created with Google or has no password set." },
@@ -30,7 +30,7 @@ export async function POST(req) {
       );
     }
 
-    // ৪. বর্তমান পাসওয়ার্ড চেক করা
+  
     const isMatch = await bcrypt.compare(currentPassword, account.password);
     if (!isMatch) {
       return NextResponse.json(
@@ -39,7 +39,7 @@ export async function POST(req) {
       );
     }
 
-    // ৫. নতুন পাসওয়ার্ড হ্যাশ করে account কালেকশনে আপডেট করা
+  
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await db.collection("account").updateOne(

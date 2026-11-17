@@ -1,36 +1,12 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
+import { getTeacherContext } from "@/lib/api";
 import { ObjectId } from "mongodb";
 
-import clientPromise from "@/lib/mongodb";
-import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 
-  async function getTeacher() {
-    const reqHeaders = await headers();
-     const session = await auth.api.getSession({
-      headers: reqHeaders,
-  });
-
-  if (!session?.user?.email) {
-    return null;
-  }
-
-  const client = await clientPromise;
-  const db = client.db("campus-flow");
-
-  const teacher = await db.collection("user").findOne({
-    email: session.user.email,
-  });
-
-  if (!teacher) {
-    return null;
-  }
-
-  return { session, client, db, teacher };
-}
+const getTeacher = getTeacherContext;
 
 
 export async function GET() {
@@ -168,31 +144,27 @@ export async function POST(request) {
       .insertOne(newAnnouncement);
 
   
-    const enrolledStudents = await db
-      .collection("enrollments")
-      .find({ courseCode: course.courseCode })
+    // The "enrollments" collection is never filled anywhere in the app, so every
+    // announcement fell back to ONE global notification. Target the students of the
+    // course's department + semester instead (same rule the Students page uses).
+    const students = await db
+      .collection("user")
+      .find({ role: "student", department: course.department, semester: course.semester })
+      .project({ email: 1 })
       .toArray();
 
-    if (enrolledStudents.length > 0) {
-      const notifications = enrolledStudents.map((student) => ({
-        userId: student.studentEmail,
-        title: `New Announcement: ${course.courseName}`,
-        message: message.trim(),
-        link: "/dashboard/announcements",
-        isRead: false,
-        createdAt: new Date(),
-      }));
-
-      await db.collection("notifications").insertMany(notifications);
-    } else {
-    
-      await db.collection("notifications").insertOne({
-        title: `New Announcement: ${course.courseName}`,
-        message: message.trim(),
-        link: "/dashboard/announcements",
-        isRead: false,
-        createdAt: new Date(),
-      });
+    const now = new Date();
+    if (students.length > 0) {
+      await db.collection("notifications").insertMany(
+        students.map((student) => ({
+          userId: student.email,
+          title: `New Announcement: ${course.courseName}`,
+          message: message.trim(),
+          link: "/dashboard/announcements",
+          isRead: false,
+          createdAt: now,
+        }))
+      );
     }
 
     return NextResponse.json(

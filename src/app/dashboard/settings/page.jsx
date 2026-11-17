@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { resizeImage } from "@/lib/image";
 import { authClient } from "@/lib/auth-client"; 
 import {
   User,
@@ -79,14 +80,14 @@ export default function SettingsPage() {
     }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatar(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      // Shrinks to 256px JPEG (~10-20 KB) instead of storing the raw multi-MB photo.
+      setAvatar(await resizeImage(file));
+    } catch (err) {
+      alert(err.message || "Could not process image");
     }
   };
 

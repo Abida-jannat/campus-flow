@@ -113,8 +113,16 @@ export default function Topbar() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 5000);
-    return () => clearInterval(interval);
+    // Was every 5 seconds on every dashboard page, even in background tabs.
+    const tick = () => {
+      if (!document.hidden) fetchNotifications();
+    };
+    const interval = setInterval(tick, 30000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [fetchNotifications]);
 
   const handleDeleteOne = async (id, e) => {

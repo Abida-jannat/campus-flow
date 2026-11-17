@@ -1,21 +1,8 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import clientPromise from "@/lib/mongodb";
-import { auth } from "@/lib/auth";
+import { getTeacherContext } from "@/lib/api";
 import { ObjectId } from "mongodb";
 
-async function getTeacher() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return null;
-
-  const client = await clientPromise;
-  const db = client.db("campus-flow");
-
-  const teacher = await db.collection("user").findOne({ email: session.user.email });
-  if (!teacher) return null;
-
-  return { db, teacher };
-}
+const getTeacher = getTeacherContext;
 
 
 

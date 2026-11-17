@@ -1,76 +1,44 @@
-import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { getDb } from "@/lib/mongodb";
+import { requireUser, json } from "@/lib/api";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { error } = await requireUser();
+    if (error) return error;
 
+    const { searchParams } = new URL(request.url);
     const building = searchParams.get("building");
     const day = searchParams.get("day");
     const time = searchParams.get("time");
 
     if (!building || !day || !time) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Building, day and time are required",
-        },
-        { status: 400 }
-      );
+      return json({ success: false, message: "Building, day and time are required" }, 400);
     }
 
-    const client = await clientPromise;
-    const db = client.db("campus-flow");
-
+    const db = await getDb();
     const schedules = await db
       .collection("classSchedule")
-      .find({
-        building: building,
-        day: day,
-      })
+      .find({ building, day })
+      .project({ room: 1, startTime: 1, endTime: 1 })
       .toArray();
 
-
-    const occupiedRooms = schedules
-      .filter((schedule) => {
-        return (
-          time >= schedule.startTime &&
-          time < schedule.endTime
-        );
-      })
-      .map((schedule) => schedule.room);
-
-  
-    const allRooms = [
-      ...new Set(
-        schedules.map((schedule) => schedule.room)
-      ),
-    ];
-
-
-    const availableRooms = allRooms.filter(
-      (room) => !occupiedRooms.includes(room)
+    const occupied = new Set(
+      schedules.filter((s) => time >= s.startTime && time < s.endTime).map((s) => s.room)
     );
+    const allRooms = [...new Set(schedules.map((s) => s.room))];
 
-    return NextResponse.json({
+    return json({
       success: true,
       building,
       day,
       time,
-      availableRooms,
-      occupiedRooms,
+      availableRooms: allRooms.filter((r) => !occupied.has(r)),
+      occupiedRooms: [...occupied],
     });
-
-  } catch (error) {
-    console.error("Classroom API Error:", error);
-
-    return  NextResponse.json(
-      {
-        success: false,
-            message: "Server Error", 
-        
-      },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("Classroom API Error:", err);
+    return json({ success: false, message: "Server Error" }, 500);
   }
 }

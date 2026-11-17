@@ -21,17 +21,15 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchDashboardAndAnnouncements() {
       try {
-        const dashRes = await fetch("/api/dashboard", {
-          credentials: "include",
-        });
-        if (dashRes.ok) {
-          const dashData = await dashRes.json();
-          setDashboardData(dashData);
-        }
+        // Both requests start at the same time (they used to run one after the other).
+        const [dashRes, annRes] = await Promise.all([
+          fetch("/api/dashboard", { credentials: "include" }),
+          fetch("/api/student/announcements", { credentials: "include" }),
+        ]);
 
-        const annRes = await fetch("/api/student/announcements", {
-          credentials: "include",
-        });
+        if (dashRes.ok) {
+          setDashboardData(await dashRes.json());
+        }
         if (annRes.ok) {
           const annData = await annRes.json();
           if (annData.success) {
@@ -72,7 +70,7 @@ export default function Dashboard() {
           value="3"
           subtitle="Upcoming events"
           icon={<CalendarDays size={28} />}
-          href="/dashboard/events"
+          href="#"
         />
 
         <StatsCard
@@ -86,12 +84,7 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <TodayClasses
-          classes={
-            dashboardData?.todaysClasses ||
-            dashboardData?.todayClasses ||
-            dashboardData?.TodayClasses ||
-            []
-          }
+          classes={dashboardData?.todayClasses || []}
           loading={loading}
         />
 

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:indexes": "node --env-file=.env.local scripts/create-indexes.mjs"
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "^1.6.25",

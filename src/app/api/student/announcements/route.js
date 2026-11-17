@@ -1,38 +1,25 @@
-import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import clientPromise from "@/lib/mongodb";
-import { auth } from "@/lib/auth";
+import { getDb } from "@/lib/mongodb";
+import { requireUser, json, ci } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
+    const { user, error } = await requireUser();
+    if (error) return error;
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized access" },
-        { status: 401 }
-      );
-    }
-
-    const client = await clientPromise;
-    const db = client.db("campus-flow");
-
-    // Fetch user department
-    const dbUser = await db.collection("user").findOne({ email: session.user.email });
-    const userDepartment = (dbUser?.department || session.user?.department || "").trim();
+    const db = await getDb();
+    const dept = (user.department || "").trim();
 
     let query = {};
-    if (userDepartment) {
+    if (dept) {
       query = {
         $or: [
-          { department: { $regex: new RegExp(`^${userDepartment}$`, "i") } },
+          { department: ci(dept) },
           { department: { $in: ["General", "general", "ALL", "all", "All"] } },
           { department: { $exists: false } },
-          { department: "" }
-        ]
+          { department: "" },
+        ],
       };
     }
 
@@ -43,24 +30,13 @@ export async function GET() {
       .limit(30)
       .toArray();
 
-   
-    return NextResponse.json(
-      {
-        success: true,
-        announcements: announcements,
-      },
-      {
-        status: 200,
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-validate, proxy-revalidate",
-        },
-      }
+    return json(
+      { success: true, announcements },
+      200,
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
     );
-  } catch (error) {
-    console.error("GET Announcements Error:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to load announcements" },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("GET Announcements Error:", err);
+    return json({ success: false, message: "Failed to load announcements" }, 500);
   }
 }

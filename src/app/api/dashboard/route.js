@@ -1,124 +1,52 @@
-import { auth } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { getDb } from "@/lib/mongodb";
+import { requireUser, json, ci, todayName } from "@/lib/api";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const { user, error } = await requireUser();
+    if (error) return error;
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const db = await getDb();
+    const dept = (user.department || "").trim();
+    const sem = user.semester;
 
-    const client = await clientPromise;
-    const db = client.db("campus-flow");
-    const userEmail = session.user.email;
+    const courseQuery = { department: ci(dept) };
+    if (sem) courseQuery.semester = sem;
 
-  
-    let user = await db.collection("users").findOne({ email: userEmail });
-    if (!user) {
-      user = await db.collection("user").findOne({ email: userEmail });
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        { message: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    const userDept = user.department || "BBA";
-    const userSem = user.semester;
-
-    const courseQuery = {
-      department: { $regex: new RegExp(`^${userDept}$`, "i") },
-    };
-    if (userSem) {
-      courseQuery.semester = userSem;
-    }
-
-    const courses = await db
-      .collection("courses")
-      .find(courseQuery)
-      .toArray();
-
-    const attendance = await db
-      .collection("attendance")
-      .find({ studentEmail: userEmail })
-      .toArray();
-
-    let averageAttendance = 0; 
-    if (attendance.length > 0) {
-      const total = attendance.reduce(
-        (sum, item) => sum + (item.percentage || 0),
-        0
-      );
-      averageAttendance = Math.round(total / attendance.length);
-    }
-
-    const today = new Date().toLocaleDateString("en-US", {
-      weekday: "long",
-    });
-
-    const classQuery = {
-      $and: [
-        { day: { $regex: new RegExp(`^${today}$`, "i") } },
-        {
-          $or: [
-            { department: { $regex: new RegExp(`^${userDept}$`, "i") } },
-            { department: { $exists: false } },
-            { courseCode: { $regex: /^BBA/i } }
-          ]
-        }
-      ]
-    };
-
-
-    if (userSem) {
-      classQuery.$and.push({
-        $or: [{ semester: userSem }, { semester: { $exists: false } }]
-      });
-    }
-
-    const todayClasses = await db
-      .collection("classSchedule")
-      .find(classQuery)
-      .sort({ startTime: 1 })
-      .toArray();
-
-    const announcements = await db
-      .collection("announcements")
-      .find({
-        $or: [
-          { department: "All" },
-          { department: { $regex: new RegExp(`^${userDept}$`, "i") } },
-        ],
-      })
-      .sort({ date: -1 })
-      .toArray();
+    const classAnd = [
+      { day: ci(todayName()) },
+      { $or: dept ? [{ department: ci(dept) }, { department: { $exists: false } }] : [{ department: { $exists: false } }] },
+    ];
+    if (sem) classAnd.push({ $or: [{ semester: sem }, { semester: { $exists: false } }] });
 
   
-    return NextResponse.json({
-      user,
-      attendance: averageAttendance,
-      totalCourses: courses.length,
-      courses,
-      todayClasses,     
-      todaysClasses: todayClasses, 
-      TodayClasses: todayClasses,  
-      announcements,
-    });
-  } catch (error) {
-    console.error("Dashboard API Error:", error);
-    return NextResponse.json(
-      { message: error.message },
-      { status: 500 }
-    );
+    const [totalCourses, attendanceAgg, todayClasses] = await Promise.all([
+      dept ? db.collection("courses").countDocuments(courseQuery) : 0,
+      db
+        .collection("attendance")
+        .aggregate([
+          { $match: { studentEmail: user.email } },
+          { $addFields: { s: { $toLower: { $ifNull: ["$status", ""] } } } },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              attended: { $sum: { $cond: [{ $in: ["$s", ["present", "late"]] }, 1, 0] } },
+            },
+          },
+        ])
+        .toArray(),
+      db.collection("classSchedule").find({ $and: classAnd }).sort({ startTime: 1 }).limit(20).toArray(),
+    ]);
+
+    const a = attendanceAgg[0];
+    const attendance = a && a.total > 0 ? Math.round((a.attended / a.total) * 100) : 0;
+
+    return json({ success: true, attendance, totalCourses, todayClasses });
+  } catch (err) {
+    console.error("Dashboard API Error:", err);
+    return json({ success: false, message: "Failed to load dashboard" }, 500);
   }
 }

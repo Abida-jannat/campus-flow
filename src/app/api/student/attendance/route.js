@@ -1,31 +1,15 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import clientPromise from "@/lib/mongodb";
-import { auth } from "@/lib/auth";
+import { getDb } from "@/lib/mongodb";
+import { requireUser } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({
-      headers: reqHeaders,
-    });
-
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Not authenticated",
-        },
-        { status: 401 }
-      );
-    }
-
-    const studentEmail = session.user.email;
-
-    const client = await clientPromise;
-    const db = client.db("campus-flow");
+    const { user, error } = await requireUser();
+    if (error) return error;
+    const studentEmail = user.email;
+    const db = await getDb();
 
     const records = await db
       .collection("attendance")
@@ -35,6 +19,7 @@ export async function GET() {
       .sort({
         date: -1,
       })
+      .limit(1000)
       .toArray();
 
     const courseMap = {};
@@ -104,8 +89,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       student: {
-        name: session.user.name,
-        email: session.user.email,
+        name: user.name,
+        email: user.email,
       },
       records,
       courses: courseAttendance,

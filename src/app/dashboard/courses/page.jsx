@@ -13,16 +13,8 @@ export default function CoursesPage() {
   useEffect(() => {
     async function fetchUserCourses() {
       try {
-        const userRes = await fetch("/api/user", { credentials: "include" });
-        if (!userRes.ok) return;
-        const userData = await userRes.json();
-        
-        const userDept = userData?.department || "";
-        const userSem = userData?.semester || "";
-
-        const res = await fetch(`/api/courses?department=${userDept}&semester=${userSem}`, {
-          credentials: "include",
-        });
+        // One request: the server uses the logged-in student's department + semester.
+        const res = await fetch("/api/courses?mine=1", { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setCourses(Array.isArray(data) ? data : data.courses || []);
@@ -39,8 +31,8 @@ export default function CoursesPage() {
 
   const filteredCourses = courses.filter(
     (course) =>
-      course.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.code?.toLowerCase().includes(searchTerm.toLowerCase())
+      (course.title || course.courseName)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.code || course.courseCode)?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -85,7 +77,7 @@ export default function CoursesPage() {
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="px-3 py-1 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-xs font-semibold">
-                      {course.code || "N/A"}
+                      {course.code || course.courseCode || "N/A"}
                     </span>
                     <span className="px-3 py-1 rounded-xl text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">
                       {course.status || "Ongoing"}
@@ -93,11 +85,11 @@ export default function CoursesPage() {
                   </div>
 
                   <h3 className="text-lg font-bold text-white mt-4">
-                    {course.title}
+                    {course.title || course.courseName}
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
                     Instructor:{" "}
-                    <span className="text-slate-300">{course.instructor || "Not Assigned"}</span>
+                    <span className="text-slate-300">{course.instructor || course.teacher || "Not Assigned"}</span>
                   </p>
                 </div>
 
