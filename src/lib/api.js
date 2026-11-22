@@ -21,11 +21,7 @@ export const todayName = () =>
 export const todayISO = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 
-/**
- * Returns { user } or { error: NextResponse }.
- * session.user already contains name/email/role/department/semester/studentId/image,
- * so routes do NOT need a second DB lookup for the user.
- */
+
 export async function requireUser({ role } = {}) {
   const session = await auth.api.getSession({ headers: await headers() });
   const user = session?.user;
@@ -38,11 +34,7 @@ export async function requireUser({ role } = {}) {
   return { user };
 }
 
-/**
- * Shared by the /api/teacher/* routes. Returns { db, teacher } or null.
- * `teacher` is the session user (name, email, department, image, role) -
- * no extra DB lookup, and non-teachers are rejected.
- */
+
 export async function getTeacherContext() {
   const { user, error } = await requireUser({ role: "teacher" });
   if (error) return null;
