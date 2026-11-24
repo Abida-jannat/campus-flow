@@ -2,41 +2,50 @@ import { MongoClient } from "mongodb";
 import dns from "node:dns";
 
 const uri = process.env.MONGODB_URI;
+
 if (!uri) {
   throw new Error("Please define the MONGODB_URI environment variable (.env.local)");
 }
 
-dns.setDefaultResultOrder("ipv4first");
-
+export const DB_NAME = process.env.MONGODB_DB || "campus-flow";
 
 if (process.env.NODE_ENV !== "production") {
+  dns.setDefaultResultOrder("ipv4first");
   dns.setServers(["1.1.1.1", "8.8.8.8"]);
 }
 
-export const DB_NAME = process.env.MONGODB_DB || "campus-flow";
 
-const options = {
-  connectTimeoutMS: 10000,
-  serverSelectionTimeoutMS: 10000,
-  maxPoolSize: 10,
-  maxIdleTimeMS: 60000,
-};
+const cache = (global._campusFlowMongo ??= { client: null, promise: null });
 
-
-const g = globalThis;
-if (!g._campusflowMongo) {
-  const client = new MongoClient(uri, options);
-  const promise = client.connect();
-  promise.catch(() => {}); 
-  g._campusflowMongo = { client, promise };
+if (!cache.client) {
+  cache.client = new MongoClient(uri, {
+    maxPoolSize: 10,
+    connectTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 20000, 
+  });
 }
 
-export const client = g._campusflowMongo.client;
-const clientPromise = g._campusflowMongo.promise;
+export const mongoClient = cache.client;
+
+
+function connect() {
+  if (!cache.promise) {
+    cache.promise = mongoClient.connect().catch((err) => {
+      cache.promise = null; 
+      throw err;
+    });
+  }
+  return cache.promise;
+}
+
 
 export async function getDb() {
-  await clientPromise;
-  return client.db(DB_NAME);
+  await connect();
+  return mongoClient.db(DB_NAME);
 }
 
+
+const clientPromise = connect();
+clientPromise.catch(() => {}); 
 export default clientPromise;

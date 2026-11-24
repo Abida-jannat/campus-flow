@@ -37,9 +37,7 @@ export async function GET() {
       .sort({ courseCode: 1 })
       .toArray();
 
-    // FIX: previously this response never included "teacher", so the
-    // frontend's `data.teacher` was always undefined and the teacher info
-    // card never rendered.
+ 
     return NextResponse.json({
       success: true,
       courses,
@@ -62,9 +60,7 @@ export async function GET() {
   }
 }
 
-/* =========================
-   ADD COURSE
-========================= */
+
 
 export async function POST(request) {
   try {

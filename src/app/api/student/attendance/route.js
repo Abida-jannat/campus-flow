@@ -1,116 +1,46 @@
-import { NextResponse } from "next/server";
-import { getDb } from "@/lib/mongodb";
-import { requireUser } from "@/lib/api";
+import { route, ok } from "@/lib/api";
+import { pct } from "@/lib/queries";
 
-export const dynamic = "force-dynamic";
+export const GET = route(async ({ db, user }) => {
+  const records = await db
+    .collection("attendance")
+    .find({ studentEmail: user.email })
+    .sort({ date: -1 })
+    .toArray();
 
-export async function GET() {
-  try {
-    const { user, error } = await requireUser();
-    if (error) return error;
-    const studentEmail = user.email;
-    const db = await getDb();
+  const byCourse = new Map();
+  const overall = { present: 0, absent: 0, late: 0, total: 0 };
 
-    const records = await db
-      .collection("attendance")
-      .find({
-        studentEmail: studentEmail,
-      })
-      .sort({
-        date: -1,
-      })
-      .limit(1000)
-      .toArray();
+  for (const record of records) {
+    const courseCode = record.courseCode || "Unknown";
+    const status = String(record.status || "").toLowerCase();
 
-    const courseMap = {};
-
-    records.forEach((record) => {
-      const courseCode = record.courseCode || "Unknown";
-      const status = record.status?.toLowerCase() || "";
-
-      if (!courseMap[courseCode]) {
-        courseMap[courseCode] = {
-          courseCode: courseCode,
-          courseName: record.courseName || courseCode,
-          present: 0,
-          absent: 0,
-          late: 0,
-          total: 0,
-        };
-      }
-
-      courseMap[courseCode].total += 1;
-
-      if (status === "present") courseMap[courseCode].present += 1;
-      if (status === "absent") courseMap[courseCode].absent += 1;
-      if (status === "late") courseMap[courseCode].late += 1;
-    });
-
-    // Course wise Percentage Calculation (Present + Late = Attended)
-    const courseAttendance = Object.values(courseMap).map((course) => {
-      const attended = course.present + course.late;
-      const percentage =
-        course.total > 0
-          ? Math.round((attended / course.total) * 100)
-          : 0;
-
-      return {
-        ...course,
-        percentage,
-      };
-    });
-
-    // Overall Calculation across all courses
-    const overall = records.reduce(
-      (acc, record) => {
-        const status = record.status?.toLowerCase() || "";
-        acc.total += 1;
-
-        if (status === "present") acc.present += 1;
-        if (status === "absent") acc.absent += 1;
-        if (status === "late") acc.late += 1;
-
-        return acc;
-      },
-      {
+    if (!byCourse.has(courseCode)) {
+      byCourse.set(courseCode, {
+        courseCode,
+        courseName: record.courseName || courseCode,
         present: 0,
         absent: 0,
         late: 0,
         total: 0,
-      }
-    );
+      });
+    }
+    const course = byCourse.get(courseCode);
 
-    const overallAttended = overall.present + overall.late;
-    const overallPercentage =
-      overall.total > 0
-        ? Math.round((overallAttended / overall.total) * 100)
-        : 0;
-
-    return NextResponse.json({
-      success: true,
-      student: {
-        name: user.name,
-        email: user.email,
-      },
-      records,
-      courses: courseAttendance,
-      overall: {
-        present: overall.present,
-        absent: overall.absent,
-        late: overall.late,
-        total: overall.total,
-        percentage: overallPercentage,
-      },
-    });
-  } catch (error) {
-    console.error("Student Attendance Error:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to load attendance",
-      },
-      { status: 500 }
-    );
+    course.total += 1;
+    overall.total += 1;
+    if (status === "present" || status === "absent" || status === "late") {
+      course[status] += 1;
+      overall[status] += 1;
+    }
   }
-}
+
+  const withPercent = (c) => ({ ...c, percentage: pct(c.present + c.late, c.total) });
+
+  return ok({
+    student: { name: user.name, email: user.email },
+    records,
+    courses: [...byCourse.values()].map(withPercent),
+    overall: withPercent(overall),
+  });
+});

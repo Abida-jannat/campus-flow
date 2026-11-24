@@ -1,31 +1,15 @@
-import { getDb } from "@/lib/mongodb";
-import { requireUser, json, ci } from "@/lib/api";
-
-export const dynamic = "force-dynamic";
+import { route, ok } from "@/lib/api";
+import { ci } from "@/lib/queries";
 
 
-export async function GET(request) {
-  try {
-    const { user, error } = await requireUser();
-    if (error) return error;
+export const GET = route(async ({ db, user, query }) => {
+  const department = query.get("department") ?? user.department;
+  const semester = query.get("semester") ?? user.semester;
 
-    const { searchParams } = new URL(request.url);
-    const mine = searchParams.get("mine") === "1";
-    const department = mine ? user.department : searchParams.get("department");
-    const semester = mine ? user.semester : searchParams.get("semester");
+  const filter = {};
+  if (department) filter.department = ci(department);
+  if (semester) filter.semester = semester;
 
-    const query = {};
-    if (department) query.department = ci(department);
-    if (semester) query.semester = semester;
-
-  
-    if (mine && !department) return json([]);
-
-    const db = await getDb();
-    const courses = await db.collection("courses").find(query).limit(200).toArray();
-    return json(courses);
-  } catch (err) {
-    console.error("GET courses error:", err);
-    return json({ message: "Failed to load courses" }, 500);
-  }
-}
+  const courses = await db.collection("courses").find(filter).sort({ courseCode: 1 }).toArray();
+  return ok({ courses });
+});
