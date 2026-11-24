@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { apiFetch } from "@/lib/api-client";
 import StatsCard from "@/components/dashboard/StatsCard";
 import TodayClasses from "@/components/dashboard/TodayClasses";
 import AIAssistantCard from "@/components/dashboard/AIassistant";
@@ -14,55 +16,39 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [announcements, setAnnouncements] = useState([]);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchDashboardAndAnnouncements() {
-      try {
-        // Both requests start at the same time (they used to run one after the other).
-        const [dashRes, annRes] = await Promise.all([
-          fetch("/api/dashboard", { credentials: "include" }),
-          fetch("/api/student/announcements", { credentials: "include" }),
-        ]);
-
-        if (dashRes.ok) {
-          setDashboardData(await dashRes.json());
-        }
-        if (annRes.ok) {
-          const annData = await annRes.json();
-          if (annData.success) {
-            setAnnouncements(annData.announcements || []);
-          }
-        }
-      } catch (error) {
-        console.error("Dashboard data load error:", error);
-      } finally {
-        setLoading(false);
-      }
+    async function loadDashboard() {
+      // One request, never throws, always answers (even on timeout / server error).
+      const res = await apiFetch("/api/dashboard");
+      if (res.ok) setData(res.data);
+      else toast.error(res.message);
+      setLoading(false);
     }
-
-    fetchDashboardAndAnnouncements();
+    loadDashboard();
   }, []);
+
+  const announcements = data?.announcements ?? [];
 
   return (
     <div className="space-y-8">
       <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-6">
         <StatsCard
           title="Attendance"
-          value={`${dashboardData?.attendance ?? 0}%`}
-          subtitle="than last month"
+          value={`${data?.attendance ?? 0}%`}
+          subtitle="Overall attendance"
           icon={<GraduationCap size={28} />}
           href="/dashboard/attendance"
         />
 
         <StatsCard
           title="Courses"
-          value={dashboardData?.totalCourses ?? 0}
+          value={data?.totalCourses ?? 0}
           subtitle="Active courses"
           icon={<BookOpen size={28} />}
-          href="#"
+          href="/dashboard/courses"
         />
 
         <StatsCard
@@ -70,12 +56,12 @@ export default function Dashboard() {
           value="3"
           subtitle="Upcoming events"
           icon={<CalendarDays size={28} />}
-          href="#"
+          href="/dashboard/events"
         />
 
         <StatsCard
           title="Announcements"
-          value={announcements.length}
+          value={data?.announcementCount ?? 0}
           subtitle="Total course notices"
           icon={<Bell size={28} />}
           href="/dashboard/announcements"
@@ -84,7 +70,7 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <TodayClasses
-          classes={dashboardData?.todayClasses || []}
+          classes={data?.todaysClasses ?? []}
           loading={loading}
         />
 
