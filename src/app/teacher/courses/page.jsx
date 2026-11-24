@@ -222,15 +222,22 @@ export default function TeacherCoursesPage() {
     setDeleting(true);
 
     try {
-      const res = await fetch(
-        `/api/teacher/courses?id=${deleteCourse._id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
+      const url = `/api/teacher/courses?id=${deleteCourse._id}`;
+      let res = await fetch(url, { method: "DELETE", credentials: "include" });
+      let data = await res.json();
 
-      const data = await res.json();
+      // The server protects attendance history: ask before erasing it.
+      if (res.status === 409 && data?.error?.details?.attendanceCount) {
+        const ok = window.confirm(
+          `${data.message}\n\nDelete the course AND its attendance records?`
+        );
+        if (!ok) {
+          setDeleting(false);
+          return;
+        }
+        res = await fetch(`${url}&force=true`, { method: "DELETE", credentials: "include" });
+        data = await res.json();
+      }
 
       if (!res.ok || !data.success) {
         throw new Error(data.message || "Failed to delete course");

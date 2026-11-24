@@ -16,55 +16,61 @@ import {
   ArrowLeft,
   Save,
   UserCheck,
+  Trash2,
+  BarChart3,
+  AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { apiFetch } from "@/lib/api-client";
+
+const localDate = (offsetDays = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD in the teacher's own timezone
+};
+
+const prettyDate = (value) =>
+  new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 
 export default function TeacherAttendancePage() {
+  const [tab, setTab] = useState("take"); // "take" | "report"
+
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [date, setDate] = useState(localDate());
 
   const [students, setStudents] = useState([]);
   const [statusMap, setStatusMap] = useState({});
+  const [alreadyTaken, setAlreadyTaken] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const [report, setReport] = useState(null);
 
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [refreshingCourses, setRefreshingCourses] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingReport, setLoadingReport] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [search, setSearch] = useState("");
 
+  /* ---------------------------- data loading ---------------------------- */
 
-
-  const loadCourses = useCallback(async (isInitialLoad = true) => {
-    try {
-      if (isInitialLoad) {
-        setLoadingCourses(true);
-      } else {
-        setRefreshingCourses(true);
-      }
-
-      const res = await fetch("/api/teacher/courses", {
-        credentials: "include",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to load courses");
-      }
-
-      setCourses(data.courses || []);
-
-      if (!isInitialLoad) {
-        toast.success("Courses refreshed");
-      }
-    } catch (err) {
-      console.error("Load courses error:", err);
-      toast.error(err.message || "Failed to load courses");
-    } finally {
-      setLoadingCourses(false);
-      setRefreshingCourses(false);
+  const loadCourses = useCallback(async (initial = true) => {
+    initial ? setLoadingCourses(true) : setRefreshingCourses(true);
+    const res = await apiFetch("/api/teacher/courses");
+    if (res.ok) {
+      setCourses(res.data.courses || []);
+      if (!initial) toast.success("Courses refreshed");
+    } else {
+      toast.error(res.message);
     }
+    setLoadingCourses(false);
+    setRefreshingCourses(false);
   }, []);
 
   useEffect(() => {
@@ -72,36 +78,37 @@ export default function TeacherAttendancePage() {
     loadCourses(true);
   }, [loadCourses]);
 
-
-  const loadStudents = useCallback(async (courseCode) => {
+  const loadRoster = useCallback(async (courseCode, day) => {
     setLoadingStudents(true);
-    try {
-      const res = await fetch(
-        `/api/teacher/students?courseCode=${encodeURIComponent(courseCode)}`,
-        { credentials: "include" }
-      );
+    const res = await apiFetch(
+      `/api/attendance?courseCode=${encodeURIComponent(courseCode)}&date=${day}`
+    );
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to load students");
-      }
-
-      const studentList = data.students || [];
-      setStudents(studentList);
-
-      const defaults = {};
-      studentList.forEach((student) => {
-        defaults[student.email] = "present";
-      });
-      setStatusMap(defaults);
-    } catch (err) {
-      console.error("Load students error:", err);
-      toast.error(err.message || "Failed to load students");
+    if (!res.ok) {
+      toast.error(res.message);
       setStudents([]);
-    } finally {
-      setLoadingStudents(false);
+      setStatusMap({});
+      setAlreadyTaken(false);
+    } else {
+      const list = res.data.students || [];
+      setStudents(list);
+      // Show what was saved before; everyone else starts as "present".
+      setStatusMap(Object.fromEntries(list.map((s) => [s.email, s.status || "present"])));
+      setAlreadyTaken(Boolean(res.data.taken));
     }
+    setDirty(false);
+    setLoadingStudents(false);
+  }, []);
+
+  const loadReport = useCallback(async (courseCode) => {
+    setLoadingReport(true);
+    const res = await apiFetch(`/api/attendance/report?courseCode=${encodeURIComponent(courseCode)}`);
+    if (res.ok) setReport(res.data);
+    else {
+      toast.error(res.message);
+      setReport(null);
+    }
+    setLoadingReport(false);
   }, []);
 
   useEffect(() => {
@@ -109,11 +116,70 @@ export default function TeacherAttendancePage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing selection is a safe, intentional reset
       setStudents([]);
       setStatusMap({});
+      setReport(null);
       return;
     }
-    loadStudents(selectedCourse);
-  }, [selectedCourse, loadStudents]);
+    if (tab === "take") loadRoster(selectedCourse, date);
+    else loadReport(selectedCourse);
+  }, [selectedCourse, date, tab, loadRoster, loadReport]);
 
+  /* ------------------------------- actions ------------------------------- */
+
+  const changeCourseOrDate = (apply) => {
+    if (dirty && !confirm("You have unsaved changes. Discard them?")) return;
+    apply();
+  };
+
+  const setStatus = (email, status) => {
+    setStatusMap((prev) => ({ ...prev, [email]: status }));
+    setDirty(true);
+  };
+
+  const markAll = (status) => {
+    setStatusMap(Object.fromEntries(students.map((s) => [s.email, status])));
+    setDirty(true);
+  };
+
+  const handleSave = async () => {
+    if (!selectedCourse || students.length === 0) return;
+    setSaving(true);
+
+    const res = await apiFetch("/api/attendance", {
+      method: "POST",
+      body: {
+        courseCode: selectedCourse,
+        date,
+        records: students.map((s) => ({ studentEmail: s.email, status: statusMap[s.email] || "present" })),
+      },
+    });
+
+    if (res.ok) {
+      toast.success(`Attendance saved for ${prettyDate(date)}`);
+      setAlreadyTaken(true);
+      setDirty(false);
+    } else {
+      toast.error(res.requestId ? `${res.message} (ref ${res.requestId.slice(0, 8)})` : res.message);
+    }
+    setSaving(false);
+  };
+
+  const handleClearDay = async () => {
+    if (!confirm(`Delete ALL attendance saved for ${prettyDate(date)}? This cannot be undone.`)) return;
+
+    const res = await apiFetch(
+      `/api/attendance?courseCode=${encodeURIComponent(selectedCourse)}&date=${date}`,
+      { method: "DELETE" }
+    );
+
+    if (res.ok) {
+      toast.success(res.message);
+      loadRoster(selectedCourse, date);
+    } else {
+      toast.error(res.message);
+    }
+  };
+
+  /* ------------------------------ derived ------------------------------ */
 
   const selectedCourseData = useMemo(
     () => courses.find((c) => c.courseCode === selectedCourse),
@@ -121,100 +187,26 @@ export default function TeacherAttendancePage() {
   );
 
   const filteredStudents = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return students;
+    const q = search.trim().toLowerCase();
+    if (!q) return students;
     return students.filter(
       (s) =>
-        s.name?.toLowerCase().includes(query) ||
-        s.email?.toLowerCase().includes(query) ||
-        s.studentId?.toLowerCase().includes(query)
+        s.name?.toLowerCase().includes(q) ||
+        s.email?.toLowerCase().includes(q) ||
+        s.studentId?.toLowerCase().includes(q)
     );
   }, [students, search]);
 
-  const attendanceStats = useMemo(() => {
-    let present = 0,
-      absent = 0,
-      late = 0;
-
-    students.forEach((s) => {
-      const status = statusMap[s.email];
-      if (status === "present") present++;
-      if (status === "absent") absent++;
-      if (status === "late") late++;
-    });
-
-    return { total: students.length, present, absent, late };
+  const stats = useMemo(() => {
+    const counts = { present: 0, late: 0, absent: 0 };
+    students.forEach((s) => (counts[statusMap[s.email] || "present"] += 1));
+    return { total: students.length, ...counts };
   }, [students, statusMap]);
-
- 
-  const handleStatusChange = (email, status) => {
-    setStatusMap((prev) => ({ ...prev, [email]: status }));
-  };
-
-  const markAllPresent = () => {
-    const updated = {};
-    students.forEach((s) => (updated[s.email] = "present"));
-    setStatusMap(updated);
-    toast.success("All students marked present");
-  };
-
-  const markAllAbsent = () => {
-    const updated = {};
-    students.forEach((s) => (updated[s.email] = "absent"));
-    setStatusMap(updated);
-    toast.success("All students marked absent");
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedCourse) {
-      toast.error("Please select a course");
-      return;
-    }
-    if (students.length === 0) {
-      toast.error("No students found");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const res = await fetch("/api/attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          courseCode: selectedCourse,
-          records: Object.entries(statusMap).map(([studentEmail, status]) => ({
-            studentEmail,
-            status,
-          })),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to save attendance");
-      }
-
-      toast.success("Attendance saved successfully");
-    } catch (err) {
-      console.error("Save attendance error:", err);
-      toast.error(err.message || "Failed to save attendance");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const getInitials = (name = "") =>
     name.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "ST";
 
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-
+  /* -------------------------------- UI -------------------------------- */
 
   if (loadingCourses) {
     return (
@@ -232,41 +224,28 @@ export default function TeacherAttendancePage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-8">
-          <div>
-            <Link
-              href="/teacher"
-              className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-white transition mb-4"
-            >
-              <ArrowLeft size={15} />
-              Back to Dashboard
-            </Link>
+        <div className="mb-8">
+          <Link
+            href="/teacher"
+            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-white transition mb-4"
+          >
+            <ArrowLeft size={15} />
+            Back to Dashboard
+          </Link>
 
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                <ClipboardCheck size={24} className="text-indigo-400" />
-              </div>
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-bold">Take Attendance</h1>
-                <p className="text-sm text-slate-400 mt-1">Record attendance for your students</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center">
-              <CalendarDays size={18} className="text-indigo-400" />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+              <ClipboardCheck size={24} className="text-indigo-400" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Attendance Date</p>
-              <p className="text-sm font-medium text-slate-200">{today}</p>
+              <h1 className="text-2xl lg:text-3xl font-bold">Attendance</h1>
+              <p className="text-sm text-slate-400 mt-1">Take attendance, fix past days and review reports</p>
             </div>
           </div>
         </div>
 
-        {/* COURSE SELECTOR */}
+        {/* COURSE + DATE */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 lg:p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-end gap-5">
             <div className="flex-1">
@@ -274,19 +253,36 @@ export default function TeacherAttendancePage() {
               <div className="relative">
                 <select
                   value={selectedCourse}
-                  onChange={(e) => setSelectedCourse(e.target.value)}
-                  className="w-full appearance-none bg-slate-800 border border-slate-700 rounded-xl px-4 py-3.5 pr-10 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition"
+                  onChange={(e) => changeCourseOrDate(() => setSelectedCourse(e.target.value))}
+                  className="w-full appearance-none bg-slate-800 border border-slate-700 rounded-xl px-4 py-3.5 pr-10 text-sm text-white outline-none focus:border-indigo-500 transition"
                 >
                   <option value="">Choose a course</option>
-                  {courses.map((course) => (
-                    <option key={course.courseCode} value={course.courseCode}>
-                      {course.courseName} ({course.courseCode})
+                  {courses.map((c) => (
+                    <option key={c.courseCode} value={c.courseCode}>
+                      {c.courseName} ({c.courseCode})
                     </option>
                   ))}
                 </select>
                 <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
               </div>
             </div>
+
+            {tab === "take" && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Date</label>
+                <div className="relative">
+                  <CalendarDays size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={date}
+                    min={localDate(-60)}
+                    max={localDate()}
+                    onChange={(e) => e.target.value && changeCourseOrDate(() => setDate(e.target.value))}
+                    className="bg-slate-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white outline-none focus:border-indigo-500 transition [color-scheme:dark]"
+                  />
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => loadCourses(false)}
@@ -300,18 +296,10 @@ export default function TeacherAttendancePage() {
 
           {selectedCourseData && (
             <div className="mt-5 pt-5 border-t border-slate-800 flex flex-wrap gap-3">
-              <div className="px-3 py-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-xs font-medium">
-                {selectedCourseData.courseCode}
-              </div>
-              <div className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">
-                {selectedCourseData.department}
-              </div>
-              <div className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">
-                {selectedCourseData.semester}
-              </div>
-              <div className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">
-                {selectedCourseData.credit} Credits
-              </div>
+              <span className="px-3 py-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-xs font-medium">{selectedCourseData.courseCode}</span>
+              <span className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">{selectedCourseData.department}</span>
+              <span className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">{selectedCourseData.semester}</span>
+              <span className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">{selectedCourseData.credit} Credits</span>
             </div>
           )}
 
@@ -325,14 +313,62 @@ export default function TeacherAttendancePage() {
           )}
         </div>
 
-        {/* ATTENDANCE CONTENT */}
-        {selectedCourse && (
+        {/* TABS */}
+        <div className="flex gap-2 mb-6">
+          {[
+            ["take", "Take Attendance", <ClipboardCheck key="i" size={16} />],
+            ["report", "Reports", <BarChart3 key="i" size={16} />],
+          ].map(([id, label, icon]) => (
+            <button
+              key={id}
+              onClick={() => changeCourseOrDate(() => setTab(id))}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
+                tab === id
+                  ? "bg-indigo-600 border-indigo-500 text-white"
+                  : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+              }`}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {!selectedCourse && (
+          <div className="bg-slate-900 border border-slate-800 border-dashed rounded-2xl py-20 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-5">
+              <ClipboardCheck size={28} className="text-indigo-400" />
+            </div>
+            <h2 className="text-lg font-semibold text-slate-200">Select a course to begin</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto mt-2">
+              Choose one of your courses above to take attendance or see its report.
+            </p>
+          </div>
+        )}
+
+        {/* ------------------------- TAKE ATTENDANCE ------------------------- */}
+        {selectedCourse && tab === "take" && (
           <>
+            {alreadyTaken && (
+              <div className="mb-4 flex items-center gap-3 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-sm text-indigo-200">
+                <Check size={16} className="shrink-0" />
+                <span>
+                  Attendance for <strong>{prettyDate(date)}</strong> was already saved. You are editing it; saving again updates the records.
+                </span>
+                <button
+                  onClick={handleClearDay}
+                  className="ml-auto flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200 shrink-0"
+                >
+                  <Trash2 size={14} /> Clear this day
+                </button>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <AttendanceStat label="Total Students" value={attendanceStats.total} icon={<Users size={18} />} />
-              <AttendanceStat label="Present" value={attendanceStats.present} icon={<Check size={18} />} type="present" />
-              <AttendanceStat label="Late" value={attendanceStats.late} icon={<Clock size={18} />} type="late" />
-              <AttendanceStat label="Absent" value={attendanceStats.absent} icon={<X size={18} />} type="absent" />
+              <Stat label="Total Students" value={stats.total} icon={<Users size={18} />} />
+              <Stat label="Present" value={stats.present} icon={<Check size={18} />} type="present" />
+              <Stat label="Late" value={stats.late} icon={<Clock size={18} />} type="late" />
+              <Stat label="Absent" value={stats.absent} icon={<X size={18} />} type="absent" />
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
@@ -340,25 +376,22 @@ export default function TeacherAttendancePage() {
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-semibold">Student Attendance</h2>
-                    <p className="text-sm text-slate-500 mt-1">Mark each student as present, late, or absent.</p>
+                    <p className="text-sm text-slate-500 mt-1">{prettyDate(date)}</p>
                   </div>
-
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={markAllPresent}
+                      onClick={() => markAll("present")}
                       disabled={students.length === 0}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/10 transition disabled:opacity-40"
                     >
-                      <UserCheck size={14} />
-                      Mark All Present
+                      <UserCheck size={14} /> Mark All Present
                     </button>
                     <button
-                      onClick={markAllAbsent}
+                      onClick={() => markAll("absent")}
                       disabled={students.length === 0}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium border border-red-500/10 transition disabled:opacity-40"
                     >
-                      <X size={14} />
-                      Mark All Absent
+                      <X size={14} /> Mark All Absent
                     </button>
                   </div>
                 </div>
@@ -369,7 +402,7 @@ export default function TeacherAttendancePage() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search student by name or email..."
+                    placeholder="Search student by name, email or ID..."
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-600 outline-none focus:border-indigo-500 transition"
                   />
                 </div>
@@ -382,69 +415,45 @@ export default function TeacherAttendancePage() {
                 </div>
               )}
 
-              {!loadingStudents && selectedCourse && students.length === 0 && (
+              {!loadingStudents && students.length === 0 && (
                 <div className="py-16 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                    <Users size={25} className="text-slate-600" />
-                  </div>
+                  <Users size={25} className="mx-auto text-slate-600 mb-3" />
                   <h3 className="font-medium text-slate-300">No students found</h3>
                   <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-                    There are no students registered for this course yet.
+                    Students appear here when their department and semester match this course.
                   </p>
                 </div>
               )}
 
               {!loadingStudents && filteredStudents.length > 0 && (
-                <div>
-                  <div className="hidden lg:grid grid-cols-[1fr_320px] gap-4 px-6 py-3 bg-slate-950/40 border-b border-slate-800 text-xs uppercase tracking-wider text-slate-600">
-                    <span>Student</span>
-                    <span className="text-center">Attendance Status</span>
-                  </div>
-
-                  <div className="divide-y divide-slate-800">
-                    {filteredStudents.map((student) => {
-                      const status = statusMap[student.email] || "present";
-                      return (
-                        <div key={student.email} className="px-4 lg:px-6 py-4 hover:bg-slate-800/30 transition">
-                          <div className="flex flex-col lg:grid lg:grid-cols-[1fr_320px] lg:items-center gap-4">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/10 flex items-center justify-center text-indigo-300 text-xs font-semibold shrink-0">
-                                {getInitials(student.name)}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-slate-200 truncate">{student.name}</p>
-                                <p className="text-xs text-slate-500 truncate mt-0.5">{student.email}</p>
-                              </div>
+                <div className="divide-y divide-slate-800">
+                  {filteredStudents.map((student) => {
+                    const status = statusMap[student.email] || "present";
+                    return (
+                      <div key={student.email} className="px-4 lg:px-6 py-4 hover:bg-slate-800/30 transition">
+                        <div className="flex flex-col lg:grid lg:grid-cols-[1fr_320px] lg:items-center gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/10 flex items-center justify-center text-indigo-300 text-xs font-semibold shrink-0">
+                              {getInitials(student.name)}
                             </div>
-
-                            <div className="grid grid-cols-3 gap-2">
-                              <StatusButton
-                                active={status === "present"}
-                                onClick={() => handleStatusChange(student.email, "present")}
-                                icon={<Check size={15} />}
-                                label="Present"
-                                type="present"
-                              />
-                              <StatusButton
-                                active={status === "late"}
-                                onClick={() => handleStatusChange(student.email, "late")}
-                                icon={<Clock size={15} />}
-                                label="Late"
-                                type="late"
-                              />
-                              <StatusButton
-                                active={status === "absent"}
-                                onClick={() => handleStatusChange(student.email, "absent")}
-                                icon={<X size={15} />}
-                                label="Absent"
-                                type="absent"
-                              />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-slate-200 truncate">{student.name}</p>
+                              <p className="text-xs text-slate-500 truncate mt-0.5">
+                                {student.studentId ? `${student.studentId} · ` : ""}
+                                {student.email}
+                              </p>
                             </div>
                           </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <StatusButton active={status === "present"} onClick={() => setStatus(student.email, "present")} icon={<Check size={15} />} label="Present" type="present" />
+                            <StatusButton active={status === "late"} onClick={() => setStatus(student.email, "late")} icon={<Clock size={15} />} label="Late" type="late" />
+                            <StatusButton active={status === "absent"} onClick={() => setStatus(student.email, "absent")} icon={<X size={15} />} label="Absent" type="absent" />
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -459,26 +468,25 @@ export default function TeacherAttendancePage() {
                 <div className="sticky bottom-0 p-4 lg:p-5 bg-slate-950/95 backdrop-blur border-t border-slate-800">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <p className="text-sm text-slate-300">{attendanceStats.total} students</p>
+                      <p className="text-sm text-slate-300">
+                        {stats.total} students {dirty && <span className="text-amber-400">· unsaved changes</span>}
+                      </p>
                       <p className="text-xs text-slate-500 mt-1">
-                        {attendanceStats.present} present · {attendanceStats.late} late · {attendanceStats.absent} absent
+                        {stats.present} present · {stats.late} late · {stats.absent} absent
                       </p>
                     </div>
-
                     <button
-                      onClick={handleSubmit}
+                      onClick={handleSave}
                       disabled={saving}
                       className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 px-6 py-3 rounded-xl text-sm font-semibold transition shadow-lg shadow-indigo-500/10"
                     >
                       {saving ? (
                         <>
-                          <Loader2 size={17} className="animate-spin" />
-                          Saving Attendance...
+                          <Loader2 size={17} className="animate-spin" /> Saving...
                         </>
                       ) : (
                         <>
-                          <Save size={17} />
-                          Save Attendance
+                          <Save size={17} /> {alreadyTaken ? "Update Attendance" : "Save Attendance"}
                         </>
                       )}
                     </button>
@@ -489,30 +497,118 @@ export default function TeacherAttendancePage() {
           </>
         )}
 
-        {!selectedCourse && (
-          <div className="bg-slate-900 border border-slate-800 border-dashed rounded-2xl py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-5">
-              <ClipboardCheck size={28} className="text-indigo-400" />
-            </div>
-            <h2 className="text-lg font-semibold text-slate-200">Select a course to begin</h2>
-            <p className="text-sm text-slate-500 max-w-md mx-auto mt-2">
-              Choose one of your courses above to view the enrolled students and take today&apos;s attendance.
-            </p>
-          </div>
+        {/* ------------------------------ REPORT ------------------------------ */}
+        {selectedCourse && tab === "report" && (
+          <>
+            {loadingReport && (
+              <div className="py-16 flex flex-col items-center">
+                <Loader2 size={28} className="animate-spin text-indigo-400 mb-3" />
+                <p className="text-sm text-slate-400">Building report...</p>
+              </div>
+            )}
+
+            {!loadingReport && report && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Stat label="Classes Held" value={report.classesHeld} icon={<CalendarDays size={18} />} />
+                  <Stat label="Students" value={report.students.length} icon={<Users size={18} />} />
+                  <Stat label="Average Attendance" value={`${report.averagePercentage}%`} icon={<BarChart3 size={18} />} type="present" />
+                  <Stat label={`Below ${report.threshold}%`} value={report.atRiskCount} icon={<AlertTriangle size={18} />} type="absent" />
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                  <div className="p-5 border-b border-slate-800">
+                    <h2 className="text-lg font-semibold">Students</h2>
+                  </div>
+                  {report.students.length === 0 ? (
+                    <p className="py-10 text-center text-sm text-slate-500">No students in this course yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs uppercase tracking-wider text-slate-600 bg-slate-950/40">
+                            <th className="px-5 py-3">Student</th>
+                            <th className="px-3 py-3 text-center">Present</th>
+                            <th className="px-3 py-3 text-center">Late</th>
+                            <th className="px-3 py-3 text-center">Absent</th>
+                            <th className="px-5 py-3 text-right">Attendance</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                          {report.students.map((s) => (
+                            <tr key={s.email} className="hover:bg-slate-800/30">
+                              <td className="px-5 py-3">
+                                <p className="text-slate-200">{s.name}</p>
+                                <p className="text-xs text-slate-500">{s.studentId || s.email}</p>
+                              </td>
+                              <td className="px-3 py-3 text-center text-emerald-400">{s.present}</td>
+                              <td className="px-3 py-3 text-center text-amber-400">{s.late}</td>
+                              <td className="px-3 py-3 text-center text-red-400">{s.absent}</td>
+                              <td className="px-5 py-3 text-right">
+                                <span
+                                  className={`inline-block px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                                    s.total === 0
+                                      ? "bg-slate-800 text-slate-500"
+                                      : s.atRisk
+                                      ? "bg-red-500/10 text-red-400"
+                                      : "bg-emerald-500/10 text-emerald-400"
+                                  }`}
+                                >
+                                  {s.total === 0 ? "-" : `${s.percentage}%`}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                  <div className="p-5 border-b border-slate-800">
+                    <h2 className="text-lg font-semibold">Class History</h2>
+                    <p className="text-xs text-slate-500 mt-1">Click a day to open and edit it.</p>
+                  </div>
+                  {report.sessions.length === 0 ? (
+                    <p className="py-10 text-center text-sm text-slate-500">No attendance taken yet.</p>
+                  ) : (
+                    <div className="divide-y divide-slate-800">
+                      {report.sessions.map((d) => (
+                        <button
+                          key={d.date}
+                          onClick={() => {
+                            setDate(d.date);
+                            setTab("take");
+                          }}
+                          className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-800/30 transition text-left"
+                        >
+                          <span className="text-slate-200 text-sm">{prettyDate(d.date)}</span>
+                          <span className="text-xs text-slate-500">
+                            {d.present} present · {d.late} late · {d.absent} absent ·{" "}
+                            <span className="text-slate-300 font-medium">{d.percentage}%</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function AttendanceStat({ label, value, icon, type = "default" }) {
+function Stat({ label, value, icon, type = "default" }) {
   const styles = {
     default: "bg-slate-800/60 text-slate-400",
     present: "bg-emerald-500/10 text-emerald-400",
     late: "bg-amber-500/10 text-amber-400",
     absent: "bg-red-500/10 text-red-400",
   };
-
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 lg:p-5">
       <div className="flex items-center justify-between">
@@ -539,7 +635,6 @@ function StatusButton({ active, onClick, icon, label, type }) {
       inactive: "border-slate-700 text-slate-500 hover:border-red-500/30 hover:text-red-400",
     },
   };
-
   return (
     <button
       type="button"
