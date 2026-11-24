@@ -1,11 +1,12 @@
-import { getDb } from "@/lib/mongodb";
-import { requireUser, json } from "@/lib/api";
+
+import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
-    const { error } = await requireUser();
+    const { user, db, error } = await requireUser();
     if (error) return error;
 
     const { searchParams } = new URL(request.url);
@@ -14,10 +15,15 @@ export async function GET(request) {
     const time = searchParams.get("time");
 
     if (!building || !day || !time) {
-      return json({ success: false, message: "Building, day and time are required" }, 400);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Building, day and time are required",
+        },
+        { status: 400 }
+      );
     }
 
-    const db = await getDb();
     const schedules = await db
       .collection("classSchedule")
       .find({ building, day })
@@ -25,11 +31,14 @@ export async function GET(request) {
       .toArray();
 
     const occupied = new Set(
-      schedules.filter((s) => time >= s.startTime && time < s.endTime).map((s) => s.room)
+      schedules
+        .filter((s) => time >= s.startTime && time < s.endTime)
+        .map((s) => s.room)
     );
+
     const allRooms = [...new Set(schedules.map((s) => s.room))];
 
-    return json({
+    return NextResponse.json({
       success: true,
       building,
       day,
@@ -37,8 +46,13 @@ export async function GET(request) {
       availableRooms: allRooms.filter((r) => !occupied.has(r)),
       occupiedRooms: [...occupied],
     });
+
   } catch (err) {
     console.error("Classroom API Error:", err);
-    return json({ success: false, message: "Server Error" }, 500);
+
+    return NextResponse.json(
+      { success: false, message: "Server Error" },
+      { status: 500 }
+    );
   }
 }

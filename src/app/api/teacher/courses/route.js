@@ -1,325 +1,119 @@
-import { NextResponse } from "next/server";
-import { getTeacherContext } from "@/lib/api";
-import { ObjectId } from "mongodb";
+import { route, ok, created, objectId, notFound, conflict, badRequest } from "@/lib/api";
+import { validate, courseSchema } from "@/lib/schemas";
+import { teacherFilter, ci } from "@/lib/queries";
 
-const getTeacher = getTeacherContext;
+const teacherCard = (t) => ({ name: t.name, department: t.department, image: t.image || null });
 
-
-export async function GET() {
-  try {
-    const data = await getTeacher();
-
-    if (!data) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Not authenticated or teacher not found",
-        },
-        { status: 401 }
-      );
-    }
-
-    const { db, teacher } = data;
-
+// GET /api/teacher/courses
+export const GET = route(
+  async ({ db, user }) => {
     const courses = await db
       .collection("courses")
-      .find({
-        teacher: teacher.name,
-      })
-      .project({
-        courseCode: 1,
-        courseName: 1,
-        department: 1,
-        semester: 1,
-        credit: 1,
-        teacher: 1,
-      })
+      .find(teacherFilter(user))
+      .project({ courseCode: 1, courseName: 1, department: 1, semester: 1, credit: 1, teacher: 1, teacherEmail: 1 })
       .sort({ courseCode: 1 })
       .toArray();
 
- 
-    return NextResponse.json({
-      success: true,
-      courses,
-      teacher: {
-        name: teacher.name,
-        department: teacher.department,
-        image: teacher.image || null,
-      },
-    });
-  } catch (error) {
-    console.error("GET Teacher Courses Error:", error);
+    return ok({ courses, teacher: teacherCard(user) });
+  },
+  { access: "teacher" }
+);
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to load courses",
-      },
-      { status: 500 }
-    );
-  }
-}
+// POST /api/teacher/courses
+export const POST = route(
+  async ({ db, user, json }) => {
+    const data = validate(await json(), courseSchema);
 
+    const exists = await db
+      .collection("courses")
+      .findOne({ courseCode: ci(data.courseCode), ...teacherFilter(user) });
+    if (exists) throw conflict("You already have a course with this code");
 
-
-export async function POST(request) {
-  try {
-    const data = await getTeacher();
-
-    if (!data) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Not authenticated or teacher not found",
-        },
-        { status: 401 }
-      );
-    }
-
-    const { db, teacher } = data;
-
-    const body = await request.json();
-
-    const {
-      courseCode,
-      courseName,
-      department,
-      semester,
-      credit,
-    } = body;
-
-    if (
-      !courseCode ||
-      !courseName ||
-      !department ||
-      !semester ||
-      !credit
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "All course fields are required",
-        },
-        { status: 400 }
-      );
-    }
-
-    const existingCourse = await db.collection("courses").findOne({
-      courseCode: courseCode.trim(),
-      teacher: teacher.name,
-    });
-
-    if (existingCourse) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "You already have this course",
-        },
-        { status: 409 }
-      );
-    }
-
-    const newCourse = {
-      courseCode: courseCode.trim(),
-      courseName: courseName.trim(),
-      department,
-      semester,
-      credit: Number(credit),
-      teacher: teacher.name,
+    const course = {
+      ...data,
+      teacher: user.name,
+      teacherEmail: user.email,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    const result = await db.collection("courses").insertOne(course);
 
-    const result = await db
+    return created({ course: { _id: result.insertedId, ...course } }, { message: "Course added successfully" });
+  },
+  { access: "teacher" }
+);
+
+// PUT /api/teacher/courses   { id, courseCode, courseName, department, semester, credit }
+// If the code/name/department/semester change, everything that points at the course follows.
+export const PUT = route(
+  async ({ db, user, json }) => {
+    const body = await json();
+    const _id = objectId(body?.id, "course id");
+    const data = validate(body, courseSchema);
+
+    const current = await db.collection("courses").findOne({ _id, ...teacherFilter(user) });
+    if (!current) throw notFound("Course not found");
+
+    if (data.courseCode !== current.courseCode) {
+      const clash = await db.collection("courses").findOne({
+        _id: { $ne: _id },
+        courseCode: ci(data.courseCode),
+        ...teacherFilter(user),
+      });
+      if (clash) throw conflict("You already have a course with this code");
+    }
+
+    await db
       .collection("courses")
-      .insertOne(newCourse);
+      .updateOne({ _id }, { $set: { ...data, teacherEmail: user.email, updatedAt: new Date() } });
 
-    return NextResponse.json({
-      success: true,
-      message: "Course added successfully",
-      course: {
-        _id: result.insertedId,
-        ...newCourse,
-      },
-    });
-  } catch (error) {
-    console.error("POST Teacher Course Error:", error);
+    const oldCode = current.courseCode;
+    await Promise.all([
+      db.collection("classSchedule").updateMany(
+        { courseCode: oldCode, ...teacherFilter(user) },
+        { $set: { courseCode: data.courseCode, courseName: data.courseName, department: data.department, semester: data.semester } }
+      ),
+      db
+        .collection("announcements")
+        .updateMany({ courseCode: oldCode, ...teacherFilter(user) }, { $set: { courseCode: data.courseCode, courseName: data.courseName } }),
+      db
+        .collection("attendance")
+        .updateMany({ courseCode: oldCode, ...teacherFilter(user) }, { $set: { courseCode: data.courseCode, courseName: data.courseName } }),
+    ]);
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to add course",
-      },
-      { status: 500 }
-    );
-  }
-}
+    return ok({}, { message: "Course updated successfully" });
+  },
+  { access: "teacher" }
+);
 
-/* =========================
-   UPDATE COURSE
-========================= */
+// DELETE /api/teacher/courses?id=...
+// Removes the course with its schedule and announcements. Attendance history is
+// protected: delete it first (or pass &force=true) so records are never lost by accident.
+export const DELETE = route(
+  async ({ db, user, query }) => {
+    const _id = objectId(query.get("id"), "course id");
+    const course = await db.collection("courses").findOne({ _id, ...teacherFilter(user) });
+    if (!course) throw notFound("Course not found");
 
-export async function PUT(request) {
-  try {
-    const data = await getTeacher();
-
-    if (!data) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Not authenticated or teacher not found",
-        },
-        { status: 401 }
+    const force = query.get("force") === "true";
+    const attendanceCount = await db.collection("attendance").countDocuments({ courseCode: course.courseCode });
+    if (attendanceCount > 0 && !force) {
+      throw conflict(
+        `This course has ${attendanceCount} attendance records. Deleting it would erase them. Confirm to delete anyway.`,
+        { attendanceCount }
       );
     }
 
-    const { db, teacher } = data;
+    await Promise.all([
+      db.collection("classSchedule").deleteMany({ courseCode: course.courseCode, ...teacherFilter(user) }),
+      db.collection("announcements").deleteMany({ courseCode: course.courseCode, ...teacherFilter(user) }),
+      force && attendanceCount > 0
+        ? db.collection("attendance").deleteMany({ courseCode: course.courseCode })
+        : null,
+    ]);
+    await db.collection("courses").deleteOne({ _id });
 
-    const body = await request.json();
-
-    const {
-      id,
-      courseCode,
-      courseName,
-      department,
-      semester,
-      credit,
-    } = body;
-
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course ID is required",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (
-      !courseCode ||
-      !courseName ||
-      !department ||
-      !semester ||
-      !credit
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "All course fields are required",
-        },
-        { status: 400 }
-      );
-    }
-
-    const updatedCourse = {
-      courseCode: courseCode.trim(),
-      courseName: courseName.trim(),
-      department,
-      semester,
-      credit: Number(credit),
-      updatedAt: new Date(),
-    };
-
-    const result = await db.collection("courses").updateOne(
-      {
-        _id: new ObjectId(id),
-        teacher: teacher.name,
-      },
-      {
-        $set: updatedCourse,
-      }
-    );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course not found",
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Course updated successfully",
-    });
-  } catch (error) {
-    console.error("PUT Teacher Course Error:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to update course",
-      },
-      { status: 500 }
-    );
-  }
-}
-
-/* =========================
-   DELETE COURSE
-========================= */
-
-export async function DELETE(request) {
-  try {
-    const data = await getTeacher();
-
-    if (!data) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Not authenticated or teacher not found",
-        },
-        { status: 401 }
-      );
-    }
-
-    const { db, teacher } = data;
-
-    const { searchParams } = new URL(request.url);
-
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course ID is required",
-        },
-        { status: 400 }
-      );
-    }
-
-    const result = await db.collection("courses").deleteOne({
-      _id: new ObjectId(id),
-      teacher: teacher.name,
-    });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course not found",
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Course deleted successfully",
-    });
-  } catch (error) {
-    console.error("DELETE Teacher Course Error:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to delete course",
-      },
-      { status: 500 }
-    );
-  }
-}
+    return ok({}, { message: "Course deleted successfully" });
+  },
+  { access: "teacher" }
+);

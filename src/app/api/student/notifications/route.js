@@ -1,65 +1,32 @@
-import { ObjectId } from "mongodb";
-import { getDb } from "@/lib/mongodb";
-import { requireUser, json } from "@/lib/api";
+import { route, ok, objectId } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+// Notifications belong to ONE user (userId = email).
+export const GET = route(async ({ db, user }) => {
+  const col = db.collection("notifications");
+  const [notifications, unreadCount] = await Promise.all([
+    col.find({ userId: user.email }).sort({ createdAt: -1 }).limit(30).toArray(),
+    col.countDocuments({ userId: user.email, isRead: false }),
+  ]);
 
-// A notification belongs to this student (userId = email) or is a shared/global
-// one (no userId). Global ones are "dismissed" per student, never deleted for everyone.
-const visibleTo = (email) => ({
-  $and: [
-    { $or: [{ userId: email }, { userId: { $exists: false } }] },
-    { dismissedBy: { $ne: email } },
-  ],
+  return ok({ unreadCount, notifications, latestNotification: notifications[0] || null });
 });
 
-export async function GET() {
-  try {
-    const { user, error } = await requireUser();
-    if (error) return json({ success: false, unreadCount: 0, notifications: [] }, 401);
+// Mark all of my notifications as read (called when the bell is opened).
+export const PATCH = route(async ({ db, user }) => {
+  await db
+    .collection("notifications")
+    .updateMany({ userId: user.email, isRead: false }, { $set: { isRead: true } });
+  return ok({});
+});
 
-    const db = await getDb();
-    const filter = visibleTo(user.email);
+export const DELETE = route(async ({ db, user, query }) => {
+  const id = query.get("id");
 
-    const [notifications, unreadCount] = await Promise.all([
-      db.collection("notifications").find(filter).sort({ createdAt: -1 }).limit(20).toArray(),
-      db.collection("notifications").countDocuments({ ...filter, isRead: { $ne: true } }),
-    ]);
-
-    return json({
-      success: true,
-      unreadCount,
-      notifications,
-      latestNotification: notifications[0] || null,
-    });
-  } catch (err) {
-    console.error("GET Notifications Error:", err);
-    return json({ success: false, unreadCount: 0, notifications: [] }, 500);
+  if (id) {
+    await db.collection("notifications").deleteOne({ _id: objectId(id, "notification id"), userId: user.email });
+    return ok({}, { message: "Notification deleted" });
   }
-}
 
-export async function DELETE(request) {
-  try {
-    const { user, error } = await requireUser();
-    if (error) return error;
-
-    const db = await getDb();
-    const col = db.collection("notifications");
-    const id = new URL(request.url).searchParams.get("id");
-
-    if (id) {
-      if (!ObjectId.isValid(id)) return json({ success: false, message: "Invalid id" }, 400);
-      const _id = new ObjectId(id);
-      await col.deleteOne({ _id, userId: user.email });
-      await col.updateOne({ _id, userId: { $exists: false } }, { $addToSet: { dismissedBy: user.email } });
-      return json({ success: true, message: "Notification deleted" });
-    }
-
-    await col.deleteMany({ userId: user.email });
-    await col.updateMany({ userId: { $exists: false } }, { $addToSet: { dismissedBy: user.email } });
-    return json({ success: true, message: "All notifications cleared" });
-  } catch (err) {
-    console.error("DELETE Notifications Error:", err);
-    return json({ success: false, message: "Failed to delete notification" }, 500);
-  }
-}
+  await db.collection("notifications").deleteMany({ userId: user.email });
+  return ok({}, { message: "All notifications cleared" });
+});

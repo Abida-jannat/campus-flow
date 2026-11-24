@@ -1,44 +1,54 @@
-import { getDb } from "@/lib/mongodb";
-import { requireUser, json, todayName } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+import { route, ok } from "@/lib/api";
+import { teacherFilter, ci, todayName } from "@/lib/queries";
 
-export async function GET() {
-  try {
-    const { user: teacher, error } = await requireUser({ role: "teacher" });
-    if (error) return error;
-
-    const db = await getDb();
-
+export const GET = route(
+  async ({ db, user }) => {
     const courses = await db
       .collection("courses")
-      .find({ teacher: teacher.name })
+      .find(teacherFilter(user))
       .project({ department: 1, semester: 1 })
       .toArray();
 
-    // One query for all unique dept+semester combos (was one query per combo).
-    const combos = [...new Map(courses.map((c) => [`${c.department}|${c.semester}`, c])).values()].map((c) => ({
-      department: c.department,
-      semester: c.semester,
-    }));
+    const groups = [
+      ...new Map(
+        courses.map((c) => [
+          `${c.department}|${c.semester}`,
+          {
+            department: c.department,
+            semester: c.semester,
+          },
+        ])
+      ).values(),
+    ];
 
     const [studentCount, classesToday] = await Promise.all([
-      combos.length ? db.collection("user").countDocuments({ role: "student", $or: combos }) : 0,
-      db.collection("classSchedule").countDocuments({ teacher: teacher.name, day: todayName() }),
+      groups.length
+        ? db.collection("user").countDocuments({
+            role: "student",
+            $or: groups,
+          })
+        : 0,
+
+      db.collection("classSchedule").countDocuments({
+        ...teacherFilter(user),
+        day: ci(todayName()),
+      }),
     ]);
 
-    return json({
-      success: true,
+    return ok({
       teacher: {
-        name: teacher.name,
-        email: teacher.email,
-        department: teacher.department,
-        image: teacher.image || null,
+        name: user.name,
+        email: user.email,
+        department: user.department,
+        image: user.image || null,
       },
-      stats: { courseCount: courses.length, studentCount, classesToday },
+      stats: {
+        courseCount: courses.length,
+        studentCount,
+        classesToday,
+      },
     });
-  } catch (err) {
-    console.error("Teacher Summary Error:", err);
-    return json({ success: false, message: "Failed to load teacher summary" }, 500);
-  }
-}
+  },
+  { access: "teacher" }
+);

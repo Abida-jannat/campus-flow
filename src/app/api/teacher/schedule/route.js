@@ -1,224 +1,135 @@
-import { NextResponse } from "next/server";
-import { getTeacherContext } from "@/lib/api";
-import { ObjectId } from "mongodb";
+import { route, ok, objectId, notFound, conflict, badRequest } from "@/lib/api";
+import { validate, scheduleSchema, WEEKDAYS, isTime, timesOverlap } from "@/lib/schemas";
+import { teacherFilter, ci } from "@/lib/queries";
 
-const getTeacher = getTeacherContext;
+function canonicalDay(day) {
+  const match = WEEKDAYS.find((d) => d.toLowerCase() === String(day || "").trim().toLowerCase());
+  if (!match) throw badRequest(`"${day}" is not a valid day`);
+  return match;
+}
 
+function checkTimes(data) {
+  if (isTime(data.startTime) && isTime(data.endTime) && data.startTime >= data.endTime) {
+    throw badRequest("End time must be after start time");
+  }
+}
 
+// Same teacher or same room already busy at that time on that day?
+async function assertNoConflict(db, teacher, entry, ignoreId) {
+  if (!isTime(entry.startTime) || !isTime(entry.endTime)) return;
 
-export async function GET() {
-  try {
-    const data = await getTeacher();
-    if (!data) {
-      return NextResponse.json(
-        { success: false, message: "Not authenticated or teacher not found" },
-        { status: 401 }
-      );
-    }
+  const sameDay = await db
+    .collection("classSchedule")
+    .find({
+      day: ci(entry.day),
+      ...(ignoreId ? { _id: { $ne: ignoreId } } : {}),
+      $or: [
+        teacherFilter(teacher),
+        { building: entry.building, room: entry.room },
+      ],
+    })
+    .toArray();
 
-    const { db, teacher } = data;
+  for (const other of sameDay) {
+    if (!isTime(other.startTime) || !isTime(other.endTime)) continue;
+    if (!timesOverlap(entry.startTime, entry.endTime, other.startTime, other.endTime)) continue;
 
-    const schedule = await db
-      .collection("classSchedule")
-      .find({ teacher: teacher.name })
-      .sort({ day: 1, startTime: 1 })
-      .toArray();
-
-    return NextResponse.json({ success: true, schedule });
-  } catch (error) {
-    console.error("GET Schedule Error:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to load schedule" },
-      { status: 500 }
+    const sameRoom = other.building === entry.building && other.room === entry.room;
+    throw conflict(
+      sameRoom
+        ? `Room ${entry.room} (${entry.building}) is already booked on ${entry.day} ${other.startTime}-${other.endTime} for ${other.courseCode}`
+        : `You already teach ${other.courseCode} on ${entry.day} ${other.startTime}-${other.endTime}`,
+      { with: other.courseCode, day: entry.day }
     );
   }
 }
 
+export const GET = route(
+  async ({ db, user }) => {
+    const schedule = await db
+      .collection("classSchedule")
+      .find(teacherFilter(user))
+      .sort({ day: 1, startTime: 1 })
+      .toArray();
+    return ok({ schedule });
+  },
+  { access: "teacher" }
+);
 
-
-export async function POST(request) {
-  try {
-    const data = await getTeacher();
-    if (!data) {
-      return NextResponse.json(
-        { success: false, message: "Not authenticated or teacher not found" },
-        { status: 401 }
-      );
-    }
-
-    const { db, teacher } = data;
-    const body = await request.json();
-
-    const { courseCode, days, startTime, endTime, building, floor, room, type } = body;
-
-    
-    if (
-      !courseCode ||
-      !Array.isArray(days) ||
-      days.length === 0 ||
-      !startTime ||
-      !endTime ||
-      !building ||
-      !room
-    ) {
-      return NextResponse.json(
-        { success: false, message: "All schedule fields are required, including at least one day" },
-        { status: 400 }
-      );
-    }
-
-    const course = await db.collection("courses").findOne({
-      courseCode,
-      teacher: teacher.name,
+export const POST = route(
+  async ({ db, user, json }) => {
+    const body = await json();
+    const data = validate(body, scheduleSchema);
+    const { courseCode } = validate(body, { courseCode: { type: "string", required: true, label: "Course", max: 20 } });
+    const { days } = validate(body, {
+      days: { type: "array", required: true, label: "Days", min: 1, maxItems: 7 },
     });
+    checkTimes(data);
 
-    if (!course) {
-      return NextResponse.json(
-        { success: false, message: "Course not found in your course list" },
-        { status: 404 }
-      );
-    }
+    const course = await db.collection("courses").findOne({ courseCode, ...teacherFilter(user) });
+    if (!course) throw notFound("Course not found in your course list");
 
-    const newEntries = days.map((day) => ({
+    const uniqueDays = [...new Set(days.map(canonicalDay))];
+    const base = {
       courseCode: course.courseCode,
       courseName: course.courseName,
       department: course.department,
       semester: course.semester,
-      teacher: teacher.name,
-      day,
-      startTime,
-      endTime,
-      building,
-      floor: floor || "",
-      room,
-      type: type || "Theory",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
+      teacher: user.name,
+      teacherEmail: user.email,
+      ...data,
+    };
 
-    const result = await db.collection("classSchedule").insertMany(newEntries);
+    for (const day of uniqueDays) await assertNoConflict(db, user, { ...base, day });
 
-    return NextResponse.json({
-      success: true,
-      message:
-        newEntries.length > 1
-          ? `Class added to schedule for ${newEntries.length} days`
-          : "Class added to schedule",
-      insertedCount: result.insertedCount,
-    });
-  } catch (error) {
-    console.error("POST Schedule Error:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to add schedule entry" },
-      { status: 500 }
-    );
-  }
-}
+    const now = new Date();
+    const result = await db
+      .collection("classSchedule")
+      .insertMany(uniqueDays.map((day) => ({ ...base, day, createdAt: now, updatedAt: now })));
 
-
-export async function PUT(request) {
-  try {
-    const data = await getTeacher();
-    if (!data) {
-      return NextResponse.json(
-        { success: false, message: "Not authenticated or teacher not found" },
-        { status: 401 }
-      );
-    }
-
-    const { db, teacher } = data;
-    const body = await request.json();
-
-    const { id, day, startTime, endTime, building, floor, room, type } = body;
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, message: "Schedule entry ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!day || !startTime || !endTime || !building || !room) {
-      return NextResponse.json(
-        { success: false, message: "All schedule fields are required" },
-        { status: 400 }
-      );
-    }
-
-    const result = await db.collection("classSchedule").updateOne(
-      { _id: new ObjectId(id), teacher: teacher.name },
+    return ok(
+      { insertedCount: result.insertedCount },
       {
-        $set: {
-          day,
-          startTime,
-          endTime,
-          building,
-          floor: floor || "",
-          room,
-          type: type || "Theory",
-          updatedAt: new Date(),
-        },
+        status: 201,
+        message:
+          uniqueDays.length > 1
+            ? `Class added to schedule for ${uniqueDays.length} days`
+            : "Class added to schedule",
       }
     );
+  },
+  { access: "teacher" }
+);
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { success: false, message: "Schedule entry not found" },
-        { status: 404 }
-      );
-    }
+export const PUT = route(
+  async ({ db, user, json }) => {
+    const body = await json();
+    const _id = objectId(body?.id, "schedule id");
+    const data = validate(body, scheduleSchema);
+    const { day } = validate(body, { day: { type: "string", required: true, label: "Day", max: 12 } });
+    checkTimes(data);
 
-    return NextResponse.json({ success: true, message: "Schedule updated successfully" });
-  } catch (error) {
-    console.error("PUT Schedule Error:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to update schedule" },
-      { status: 500 }
-    );
-  }
-}
+    const current = await db.collection("classSchedule").findOne({ _id, ...teacherFilter(user) });
+    if (!current) throw notFound("Schedule entry not found");
 
+    const entry = { ...current, ...data, day: canonicalDay(day) };
+    await assertNoConflict(db, user, entry, _id);
 
+    await db
+      .collection("classSchedule")
+      .updateOne({ _id }, { $set: { ...data, day: entry.day, updatedAt: new Date() } });
 
-export async function DELETE(request) {
-  try {
-    const data = await getTeacher();
-    if (!data) {
-      return NextResponse.json(
-        { success: false, message: "Not authenticated or teacher not found" },
-        { status: 401 }
-      );
-    }
+    return ok({}, { message: "Schedule updated successfully" });
+  },
+  { access: "teacher" }
+);
 
-    const { db, teacher } = data;
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, message: "Schedule entry ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const result = await db.collection("classSchedule").deleteOne({
-      _id: new ObjectId(id),
-      teacher: teacher.name,
-    });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json(
-        { success: false, message: "Schedule entry not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, message: "Schedule entry deleted" });
-  } catch (error) {
-    console.error("DELETE Schedule Error:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to delete schedule entry" },
-      { status: 500 }
-    );
-  }
-}
+export const DELETE = route(
+  async ({ db, user, query }) => {
+    const _id = objectId(query.get("id"), "schedule id");
+    const result = await db.collection("classSchedule").deleteOne({ _id, ...teacherFilter(user) });
+    if (result.deletedCount === 0) throw notFound("Schedule entry not found");
+    return ok({}, { message: "Schedule entry deleted" });
+  },
+  { access: "teacher" }
+);

@@ -1,52 +1,43 @@
-import { getDb } from "@/lib/mongodb";
-import { requireUser, json, ci, todayName } from "@/lib/api";
+import { route, ok } from "@/lib/api";
+import { getStudentCourses, announcementFilter, scheduleFilter, todayName, ci, pct } from "@/lib/queries";
 
-export const dynamic = "force-dynamic";
+// One request returns everything the student dashboard needs.
+export const GET = route(async ({ db, user }) => {
+  const courses = await getStudentCourses(db, user, { courseCode: 1 });
+  const courseCodes = courses.map((c) => c.courseCode).filter(Boolean);
+  const announcementQuery = announcementFilter(user, courseCodes);
 
-export async function GET() {
-  try {
-    const { user, error } = await requireUser();
-    if (error) return error;
-
-    const db = await getDb();
-    const dept = (user.department || "").trim();
-    const sem = user.semester;
-
-    const courseQuery = { department: ci(dept) };
-    if (sem) courseQuery.semester = sem;
-
-    const classAnd = [
-      { day: ci(todayName()) },
-      { $or: dept ? [{ department: ci(dept) }, { department: { $exists: false } }] : [{ department: { $exists: false } }] },
-    ];
-    if (sem) classAnd.push({ $or: [{ semester: sem }, { semester: { $exists: false } }] });
-
-  
-    const [totalCourses, attendanceAgg, todayClasses] = await Promise.all([
-      dept ? db.collection("courses").countDocuments(courseQuery) : 0,
-      db
-        .collection("attendance")
-        .aggregate([
-          { $match: { studentEmail: user.email } },
-          { $addFields: { s: { $toLower: { $ifNull: ["$status", ""] } } } },
-          {
-            $group: {
-              _id: null,
-              total: { $sum: 1 },
-              attended: { $sum: { $cond: [{ $in: ["$s", ["present", "late"]] }, 1, 0] } },
-            },
+  const [attendanceAgg, todaysClasses, announcements, announcementCount] = await Promise.all([
+    db
+      .collection("attendance")
+      .aggregate([
+        { $match: { studentEmail: user.email } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            attended: { $sum: { $cond: [{ $in: ["$status", ["present", "late"]] }, 1, 0] } },
           },
-        ])
-        .toArray(),
-      db.collection("classSchedule").find({ $and: classAnd }).sort({ startTime: 1 }).limit(20).toArray(),
-    ]);
+        },
+      ])
+      .toArray(),
+    db
+      .collection("classSchedule")
+      .find(scheduleFilter(user, [{ day: ci(todayName()) }]))
+      .sort({ startTime: 1 })
+      .toArray(),
+    db.collection("announcements").find(announcementQuery).sort({ createdAt: -1 }).limit(5).toArray(),
+    db.collection("announcements").countDocuments(announcementQuery),
+  ]);
 
-    const a = attendanceAgg[0];
-    const attendance = a && a.total > 0 ? Math.round((a.attended / a.total) * 100) : 0;
+  const { total = 0, attended = 0 } = attendanceAgg[0] || {};
 
-    return json({ success: true, attendance, totalCourses, todayClasses });
-  } catch (err) {
-    console.error("Dashboard API Error:", err);
-    return json({ success: false, message: "Failed to load dashboard" }, 500);
-  }
-}
+  return ok({
+    attendance: pct(attended, total),
+    totalCourses: courses.length,
+    todaysClasses,
+    announcements,
+    announcementCount,
+  });
+});
+

@@ -1,30 +1,12 @@
-import { getDb } from "@/lib/mongodb";
-import { requireUser, json, ci } from "@/lib/api";
+import { route, ok } from "@/lib/api";
+import { scheduleFilter } from "@/lib/queries";
 
-export const dynamic = "force-dynamic";
+export const GET = route(async ({ db, user }) => {
+  const schedule = await db
+    .collection("classSchedule")
+    .find(scheduleFilter(user))
+    .sort({ startTime: 1 })
+    .toArray();
 
-export async function GET() {
-  try {
-    const { user, error } = await requireUser();
-    if (error) return error;
-
-    const db = await getDb();
-    const dept = (user.department || "").trim();
-
-    const schedule = await db
-      .collection("classSchedule")
-      .find({
-        $or: dept
-          ? [{ department: ci(dept) }, { department: { $exists: false } }]
-          : [{ department: { $exists: false } }],
-      })
-      .sort({ startTime: 1 })
-      .limit(300)
-      .toArray();
-
-    return json({ success: true, department: dept, schedule });
-  } catch (err) {
-    console.error("Fetch Schedule Error:", err);
-    return json({ success: false, message: "Failed to load schedule" }, 500);
-  }
-}
+  return ok({ department: user.department || "", schedule });
+});

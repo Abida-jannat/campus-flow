@@ -1,42 +1,17 @@
-import { getDb } from "@/lib/mongodb";
-import { requireUser, json, ci } from "@/lib/api";
+import { route, ok } from "@/lib/api";
+import { getStudentCourses, announcementFilter } from "@/lib/queries";
 
-export const dynamic = "force-dynamic";
+export const GET = route(async ({ db, user }) => {
+  const courses = await getStudentCourses(db, user, { courseCode: 1 });
+  const courseCodes = courses.map((c) => c.courseCode).filter(Boolean);
 
-export async function GET() {
-  try {
-    const { user, error } = await requireUser();
-    if (error) return error;
+  const announcements = await db
+    .collection("announcements")
+    .find(announcementFilter(user, courseCodes))
+    .sort({ createdAt: -1 })
+    .limit(30)
+    .toArray();
 
-    const db = await getDb();
-    const dept = (user.department || "").trim();
+  return ok({ announcements });
+});
 
-    let query = {};
-    if (dept) {
-      query = {
-        $or: [
-          { department: ci(dept) },
-          { department: { $in: ["General", "general", "ALL", "all", "All"] } },
-          { department: { $exists: false } },
-          { department: "" },
-        ],
-      };
-    }
-
-    const announcements = await db
-      .collection("announcements")
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(30)
-      .toArray();
-
-    return json(
-      { success: true, announcements },
-      200,
-      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
-    );
-  } catch (err) {
-    console.error("GET Announcements Error:", err);
-    return json({ success: false, message: "Failed to load announcements" }, 500);
-  }
-}
