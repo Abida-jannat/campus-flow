@@ -1,39 +1,45 @@
 import Groq from "groq-sdk";
-import { requireUser, json } from "@/lib/api";
+import { route, ok, ApiError } from "@/lib/api";
+import { validate } from "@/lib/schemas";
 
-export const dynamic = "force-dynamic";
+const SYSTEM_PROMPT =
+  "You are CampusConnect's academic assistant. Provide clear, structured, and helpful responses. ALWAYS use standard plain text with clear paragraph spacing and simple numbered/bulleted lists (e.g., 1., 2., - ). NEVER output Markdown tables with pipe symbols (|), HTML tags like <br>, or unformatted continuous blocks of text.";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+let client;
+function getGroq() {
+  // Created on first use: a missing key now returns a clear JSON error
+  // instead of crashing the route when it is imported.
+  if (!process.env.GROQ_API_KEY) {
+    throw new ApiError(503, "AI_NOT_CONFIGURED", "The AI assistant is not configured yet.");
+  }
+  client ??= new Groq({ apiKey: process.env.GROQ_API_KEY });
+  return client;
+}
 
-export async function POST(req) {
-  try {
-
-    const { error } = await requireUser();
-    if (error) return error;
-
-    const body = await req.json();
-    const message = typeof body?.message === "string" ? body.message.trim() : "";
-    if (!message) return json({ success: false, message: "Message is required" }, 400);
-    if (message.length > 4000) return json({ success: false, message: "Message is too long" }, 400);
-
-    const completion = await groq.chat.completions.create({
-      model: "openai/gpt-oss-120b",
-      temperature: 0.3,
-      max_completion_tokens: 1024,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are CampusConnect's academic assistant. Provide clear, structured, and helpful responses. ALWAYS use standard plain text with clear paragraph spacing and simple numbered/bulleted lists (e.g., 1., 2., - ). NEVER output Markdown tables with pipe symbols (|), HTML tags like <br>, or unformatted continuous blocks of text.",
-        },
-        { role: "user", content: message },
-      ],
+export const POST = route(
+  async ({ json }) => {
+    const { message } = validate(await json(), {
+      message: { type: "string", required: true, label: "Message", max: 2000 },
     });
 
-    const reply = completion.choices[0]?.message?.content || "No response generated.";
-    return json({ success: true, reply });
-  } catch (err) {
-    console.error("Groq API Error:", err);
-    return json({ success: false, message: "AI assistant failed to respond" }, 500);
-  }
-}
+    let completion;
+    try {
+      completion = await getGroq().chat.completions.create({
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+        temperature: 0.3,
+        max_completion_tokens: 1024,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: message },
+        ],
+      });
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      console.error("Groq error:", err?.message);
+      throw new ApiError(502, "AI_UPSTREAM", "The AI service is busy right now. Please try again.");
+    }
+
+    return ok({ reply: completion.choices[0]?.message?.content || "No response generated." });
+  },
+  { db: false, timeout: 40000 }
+);
